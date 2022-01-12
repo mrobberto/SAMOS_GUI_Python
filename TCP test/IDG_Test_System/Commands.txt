@@ -1,0 +1,11 @@
+/1A46667R\n = move motor
+/1n2\n
+/1?4\n     = status with putton pressed
+/1n2f1\n
+/1n2f1H14e1R\n = configure and move to position A
+/1n2f1e1H14\1TR\n = configure and move to position A
+/1n2fA12345H14M1000s1A100R\n
+/1A12345R\n   			= Example 1
+/1gA10000M500A0M500G10R\n  	= Example 2
+/1m75h10gJ3M500G10H14Z10000A0R\n	= Example 4
+/1A12345H14A0R\n = move to 12345, wait for the black button to be pressed,move  to 1000

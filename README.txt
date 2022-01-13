@@ -1,2 +1,2 @@
 # SAMOS_GUI
- Basic SAMOS GUI in Python
+ Basic SAMOS GUI in Python, work in progress...

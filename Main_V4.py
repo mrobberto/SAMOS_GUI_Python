@@ -45,6 +45,7 @@ class SAMOS_Main(object):
         root = tk.Tk()
         root.title("SAMOS")
        
+      
         root.geometry("1000x800")   
         
         #root.set_border_width(2)
@@ -52,7 +53,7 @@ class SAMOS_Main(object):
         self.root = root
 
         self.frame0l = tk.Frame(root,background="cyan")#, width=400, height=800)
-        self.frame0l.place(x=0, y=0, anchor="nw", width=220, height=140)
+        self.frame0l.place(x=4, y=0, anchor="nw", width=220, height=145)
         
 # =============================================================================
 #         
@@ -65,8 +66,28 @@ class SAMOS_Main(object):
 
         label_FW1 =  tk.Label(labelframe_Filters, text="Filter Wheel 1")
         label_FW1.place(x=4,y=10)
-        entry_FW1 = tk.Entry(labelframe_Filters, width=11,  bd =3)
-        entry_FW1.place(x=100, y=10)
+        # Dropdown menu options
+        FW1_options = [
+            "g-band",
+            "r-band",
+            "i-band",
+            "z-band",
+            "blank",
+            "open"
+        ]
+        # datatype of menu text
+        self.FW1_filter = tk.StringVar()
+        # initial menu text
+        self.FW1_filter.set(FW1_options[2])
+        # Create Dropdown menu
+        self.optionmenu_FW1 = tk.OptionMenu(labelframe_Filters, self.FW1_filter, *FW1_options)
+        self.optionmenu_FW1.place(x=100, y=7)
+
+
+# =============================================================================
+#         entry_FW1 = tk.Entry(labelframe_Filters, width=11,  bd =3)
+#         entry_FW1.place(x=100, y=10)
+# # =============================================================================
 # =============================================================================
 #         label_FW1_template =  tk.Label(labelframe_Filters, text="HH:MM:SS.xx")
 #         label_FW1_template.place(x=200,y=10)
@@ -74,15 +95,33 @@ class SAMOS_Main(object):
 # =============================================================================
         label_FW2 =  tk.Label(labelframe_Filters, text="Filter Wheel 2")
         label_FW2.place(x=4,y=40)
-        entry_FW2 = tk.Entry(labelframe_Filters, width=11, bd =3)
-        entry_FW2.place(x=100, y=40)
+        # Dropdown menu options
+        FW2_options = [
+            "[OIII]",
+            "Ha",
+            "[SII]",
+            "blank",
+            "open"
+        ]
+        # datatype of menu text
+        self.FW2_filter = tk.StringVar()
+        # initial menu text
+        self.FW2_filter.set(FW2_options[4])
+        # Create Dropdown menu
+        self.optionmenu_FW2 = tk.OptionMenu(labelframe_Filters, self.FW2_filter, *FW2_options)
+        self.optionmenu_FW2.place(x=100, y=37)
+
+# =============================================================================
+#         entry_FW2 = tk.Entry(labelframe_Filters, width=11, bd =3)
+#         entry_FW2.place(x=100, y=40)
+# # =============================================================================
 # =============================================================================
 #         label_FW1_template =  tk.Label(labelframe_Filters, text="2213DD:MM:SS.xx")
 #         label_FW1_template.place(x=200,y=10)
 #         
 # =============================================================================
         button_HomeFW1 =  tk.Button(labelframe_Filters, text="Home FW1", bd=3)
-        button_HomeFW1.place(x=0,y=70)
+        button_HomeFW1.place(x=4,y=70)
         button_HomeFW2 =  tk.Button(labelframe_Filters, text="Home FW2", bd=3)
         button_HomeFW2.place(x=105,y=70)
 
@@ -92,7 +131,7 @@ class SAMOS_Main(object):
 #         
 # =============================================================================
         self.frame1l = tk.Frame(root,background="cyan")#, width=400, height=800)
-        self.frame1l.place(x=0, y=150, anchor="nw", width=220, height=100)
+        self.frame1l.place(x=4, y=150, anchor="nw", width=220, height=110)
 
         labelframe_Grating =  tk.LabelFrame(self.frame1l, text="Grism Status", font=("Arial", 24))
         labelframe_Grating.pack(fill="both", expand="yes")
@@ -112,10 +151,10 @@ class SAMOS_Main(object):
         self.grating.set(options[2])
         # Create Dropdown menu
         self.optionmenu_grating = tk.OptionMenu(labelframe_Grating, self.grating, *options)
-        self.optionmenu_grating.place(x=4, y=10)
+        self.optionmenu_grating.place(x=4, y=0)
 
         button_HomeGrating=  tk.Button(labelframe_Grating, text="Home Grating", bd=3)
-        button_HomeGrating.place(x=0,y=35)
+        button_HomeGrating.place(x=4,y=35)
 
 # =============================================================================
 
@@ -180,19 +219,19 @@ class SAMOS_Main(object):
         button_Astrometry =  tk.Button(labelframe_FITSmanager, text="Astrometry", bd=3, 
 #                                            command=Astrometry)
                                             command=self.load_Astrometry)
-        button_Astrometry.place(x=0,y=80)
+        button_Astrometry.place(x=0,y=110)
 
 # 
 # =============================================================================
         button_run_Sextractor =  tk.Button(labelframe_FITSmanager, text="run DaoFind", bd=3, 
                                             command=self.run_DaoFind)
-        button_run_Sextractor.place(x=0,y=110)
+        button_run_Sextractor.place(x=0,y=80)
         label_sigma =  tk.Label(labelframe_FITSmanager, text="sigma")
-        label_sigma.place(x=120,y=112)
+        label_sigma.place(x=120,y=82)
         self.sigma=tk.StringVar()
         entry_sigma = tk.Entry(labelframe_FITSmanager, width=3,  bd =3, textvariable=self.sigma)
-        entry_sigma.place(x=160, y=110)
-        self.sigma.set('50')
+        entry_sigma.place(x=160, y=80)
+        self.sigma.set('25')
 
 
 # 
@@ -225,7 +264,7 @@ class SAMOS_Main(object):
         menubar.add_cascade(label="Help", menu=helpmenu)
         root.config(menu=menubar)                
 
-        canvas = tk.Canvas(vbox, bg="grey", height=516, width=528)
+        canvas = tk.Canvas(vbox, bg="grey", height=514, width=522)
         canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
         fi = ImageViewCanvas(logger) #=> ImageViewTk -- a backend for Ginga using a Tk canvas widget
@@ -258,7 +297,9 @@ class SAMOS_Main(object):
         fi.add(canvas2)
         canvas2.ui_set_active(True)
 
-        fi.configure(516, 528) #height, width
+
+#        fi.configure(516, 528) #height, width
+        fi.set_window_size(514,522)
 
         hbox = tk.Frame(root)
         hbox.pack(side=tk.BOTTOM, fill=tk.X, expand=0)
@@ -436,7 +477,7 @@ class SAMOS_Main(object):
 
 ######
     def donothing(self):
-        x = 0
+        pass
        
 ######
     def load_Astrometry(self):
@@ -492,13 +533,16 @@ class SAMOS_Main(object):
 #        self.canvas.redraw(whence=3)
         i=0
         for i in range(len(x)):
-            x[0]=1055
-            y[0]=1031
-            canvas2.add(Point(x[i]/2.-264, y[i]/2-258, radius, style='plus', color=color,                             
-#            canvas2.add((Point( (x[i]-528)/2., (y[i]-516)/2., radius, style='plus', color=color,                             
+            x[0]=886
+            y[0]=938
+#            canvas2.add(Point(x[i]/2.-258, y[i]/2-264, radius, style='plus', color=color,                             
+#            canvas2.add(Point( (x[i]/2.-264)*1.01, (y[i]/2-258)*1.01, radius, style='plus', color=color,                             
+#            canvas2.add(Point( (x[i]/2.-264.5), (y[i]/2-258.5), radius, style='plus', color=color,                             
+            canvas2.add(Point( (x[i]-526)/2., (y[i]-514)/2., radius, style='plus', color=color,                             
                              coord='cartesian'),
                        redraw=True)#False)
-            print(x[i], y[i],x[i]/2.-264, y[i]/2.2-258)
+            print(x[i], y[i],x[i]/2.-264, y[i]/2.-258)
+#            print(x[i], y[i],x[i]/2.-258, y[i]/2.2-258)
         canvas2.update_canvas(whence=3)
         print('done')
 

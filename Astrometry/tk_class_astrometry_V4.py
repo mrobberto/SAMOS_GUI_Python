@@ -92,12 +92,12 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
 #        # Dropdown menu options
         Survey_options = [
              "DSS",
-             "CDS/P/DSS2/red",
-             "SDSS",
-             "PanSTARRS",
-             "2MASS",
+             "DSS2/red",
+             "CDS/P/AKARI/FIS/N160",
+             "PanSTARRS/DR1/z",
+             "2MASS/J",
              "GALEX",
-             "AIIWISE"]
+             "AllWISE/W3"]
 #        # datatype of menu text
         self.Survey_selected = tk.StringVar()
 #        # initial menu text

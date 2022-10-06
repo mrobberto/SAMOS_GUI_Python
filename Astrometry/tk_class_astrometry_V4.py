@@ -47,16 +47,16 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
 
         label_EnterRA =  tk.Label(labelframe_EnterCoordinates, text="RA")
         label_EnterRA.place(x=4,y=10)
-        self.string_RA = tk.StringVar(value="00:00:00.0")
-        entry_RA = tk.Entry(labelframe_EnterCoordinates, width=11,  bd =3, textvariable=self.string_RA)
+        self.string_RA_center = tk.StringVar(value="00:00:00.0")
+        entry_RA = tk.Entry(labelframe_EnterCoordinates, width=11,  bd =3, textvariable=self.string_RA_center)
         entry_RA.place(x=40, y=8)
         label_RA_template =  tk.Label(labelframe_EnterCoordinates, text="(HH:MM:SS.x)")
         label_RA_template.place(x=150,y=10)
 
         label_EnterDEC =  tk.Label(labelframe_EnterCoordinates, text="DEC")
         label_EnterDEC.place(x=4,y=40)
-        self.string_DEC= tk.StringVar(value="+00:00:00.00")
-        entry_DEC = tk.Entry(labelframe_EnterCoordinates, width=11,  bd =3, textvariable=self.string_DEC)
+        self.string_DEC_center= tk.StringVar(value="+00:00:00.00")
+        entry_DEC = tk.Entry(labelframe_EnterCoordinates, width=11,  bd =3, textvariable=self.string_DEC_center)
         entry_DEC.place(x=40, y=38)
         label_DEC_template =  tk.Label(labelframe_EnterCoordinates, text="(\u00b1DD:MM:SS.xx)")
         label_DEC_template.place(x=150,y=40)
@@ -77,18 +77,18 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
         labelframe_Query_Simbad =  tk.LabelFrame(self.frame0l, text="Query Simbad", 
                                                      width=300,height=140,
                                                      font=("Arial", 24))
-        labelframe_Query_Simbad.place(x=5,y=150)
+        labelframe_Query_Simbad.place(x=5, y=150)
 
         button_Query_Simbad =  tk.Button(labelframe_Query_Simbad, text="Query Simbad", bd=3, command=self.Query_Simbad)
-        button_Query_Simbad.place(x=5,y=5)
+        button_Query_Simbad.place(x=5, y=35)
 
 
         button_Show_Simbad =  tk.Button(labelframe_Query_Simbad, text="Show Simbad", bd=3, command=self.Show_Simbad)
-        button_Show_Simbad.place(x=5,y=35)
+        button_Show_Simbad.place(x=5, y=65)
 
 
         self.label_SelectSurvey = tk.Label(labelframe_Query_Simbad, text="Survey")
-        self.label_SelectSurvey.place(x=100, y=35)
+        self.label_SelectSurvey.place(x=5, y=5)
 #        # Dropdown menu options
         Survey_options = [
              "DSS",
@@ -104,7 +104,7 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
         self.Survey_selected.set(Survey_options[0])
 #        # Create Dropdown menu
         self.menu_Survey = tk.OptionMenu(labelframe_Query_Simbad, self.Survey_selected ,  *Survey_options)
-        self.menu_Survey.place(x=160, y=35)
+        self.menu_Survey.place(x=65, y=5)
 
         print(self.Survey_selected.get())
 
@@ -319,9 +319,13 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
     def get_widget(self):
        return self.root
 
-    def receive_radec(self,radec):
-        self.string_RA.set(radec[0])
-        self.string_DEC.set(radec[1])
+    ### this is a function called by main to pass parameters 
+    def receive_radec(self,radec,radec_list,xy_list): 
+        self.string_RA_center.set(radec[0])
+        self.string_DEC_center.set(radec[1])
+        self.string_RA_list = radec_list[0]
+        self.string_DEC_list = radec_list[1]
+        self.xy = xy_list
 
     def set_drawparams(self, evt):
         kind = self.wdrawtype.get()
@@ -382,7 +386,7 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
         from astroquery.simbad import Simbad                                                            
         from astropy.coordinates import SkyCoord
         from astropy import units as u
-        coord = SkyCoord(self.string_RA.get()+'  '+self.string_DEC.get(),unit=(u.hourangle, u.deg), frame='fk5') 
+        coord = SkyCoord(self.string_RA_center.get()+'  '+self.string_DEC_center.get(),unit=(u.hourangle, u.deg), frame='fk5') 
 #        coord = SkyCoord('16 14 20.30000000 -19 06 48.1000000', unit=(u.hourangle, u.deg), frame='fk5') 
         query_results = Simbad.query_region(coord)                                                      
         print(query_results)
@@ -396,7 +400,7 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
         object_main_id = query_results[0]['MAIN_ID']#.decode('ascii')
         object_coords = SkyCoord(ra=query_results['RA'], dec=query_results['DEC'], 
                                  unit=(u.hourangle, u.deg), frame='icrs')
-        c = SkyCoord(self.string_RA.get(),self.string_DEC.get(), unit=(u.hourangle, u.deg))
+        c = SkyCoord(self.string_RA_center.get(),self.string_DEC_center.get(), unit=(u.hourangle, u.deg))
         query_params = { 
              'hips': self.Survey_selected.get(), #'DSS', #
              #'object': object_main_id, 
@@ -443,7 +447,7 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
         # HISTORY -image-services/hips2fits for details                                   
         # HISTORY From HiPS CDS/P/DSS2/NIR (DSS2 NIR (XI+IS))    
         self.image = hdul                                    
-       # hdul.writeto('./newtable.fits',overwrite=True)
+        hdul.writeto('./newtable.fits',overwrite=True)
         
     
                 
@@ -461,22 +465,23 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
         
         
     def Query_Gaia(self):
+        #Gaia coords are 2016.0
         import astropy.units as u
         from astropy.coordinates import SkyCoord
         from astroquery.gaia import Gaia
 
-        coord = SkyCoord(ra=self.string_RA.get(), dec=self.string_DEC.get(), unit=(u.hourangle, u.deg), frame='icrs')
+        coord = SkyCoord(ra=self.string_RA_center.get(), dec=self.string_DEC_center.get(), unit=(u.hourangle, u.deg), frame='icrs')
         width = u.Quantity(0.1, u.deg)
         height = u.Quantity(0.1, u.deg)
         Gaia.ROW_LIMIT=200
         r = Gaia.query_object_async(coordinate=coord, width=width, height=height)
         r.pprint()
-        ra_Gaia = r['ra']
-        dec_Gaia = r['dec']
+        self.ra_Gaia = r['ra']
+        self.dec_Gaia = r['dec']
         mag_Gaia = r['phot_g_mean_mag']
-        print(ra_Gaia,dec_Gaia,mag_Gaia)
-        print(len(ra_Gaia))
-        self.Gaia_RADECtoXY(ra_Gaia,dec_Gaia)
+        print(self.ra_Gaia,self.dec_Gaia,mag_Gaia)
+        print(len(self.ra_Gaia))
+        self.Gaia_RADECtoXY(self.ra_Gaia,self.dec_Gaia)
 
     def Gaia_RADECtoXY(self, ra_Gaia, dec_Gaia):
         viewer=self.fitsimage
@@ -518,5 +523,71 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
     
         canvas.update_canvas(whence=3)
         print('plotted all', len(x_Gaia), 'sources')
-    
+        print(self.string_RA_list,self.string_DEC_list)
+        self.Cross_Match()
+        
+    def Cross_Match(self):
+        import numpy as np
+        print(self.ra_Gaia,self.dec_Gaia,self.string_RA_list,self.string_DEC_list)
+        ####----------
+        ### from https://mail.python.org/pipermail/astropy/2012-May/001761.html
+        from esutil import htm
+        h = htm.HTM()
+        maxrad=5.0/3600.0 
+        m1,m2,radius = h.match( np.array(self.ra_Gaia), np.array(self.dec_Gaia), np.array(self.string_RA_list),np.array(self.string_DEC_list), maxrad)
+        ####----------
+        print(m1,m2)
+        print((np.array(self.ra_Gaia)[m1]-np.array(self.string_RA_list)[m2])*3600)
+        print((np.array(self.dec_Gaia)[m1]-np.array(self.string_DEC_list)[m2])*3600)
+        g = [np.array(self.ra_Gaia)[m1],np.array(self.dec_Gaia)[m1]]
+        s = [np.array(self.string_RA_list)[m2],np.array(self.string_DEC_list)[m2]]
+        Gaia_pairs = np.reshape(g,(2,44))
+        src = []
+        for i in range(len(g[0])):
+            src.append([g[0][i],g[1][i]])
+            
+        ####----------
+        #create wcs
+        #FROM https://docs.astropy.org/en/stable/api/astropy.wcs.utils.fit_wcs_from_points.html
+        #xy   #   x & y pixel coordinates  (numpy.ndarray, numpy.ndarray) tuple
+        coords = g
+        #These come from Gaia, epoch 2015.5
+        from astropy.coordinates import SkyCoord  # High-level coordinates
+        from astropy.coordinates import ICRS, Galactic, FK4, FK5  # Low-level frames
+        import astropy.units as u
+        world_coords  = SkyCoord(src, frame=FK4, unit=(u.deg, u.deg), obstime="J2015.5")  
+        from astropy.wcs.utils import fit_wcs_from_points
+        xy  = ( (self.xy[0])[m2], (self.xy[1])[m2] ) 
+        wcs = fit_wcs_from_points( xy, world_coords, proj_point='center',projection='TAN',sip_degree=3) 
+        ####----------
+        ### update fits file header
+        ### from https://docs.astropy.org/en/stable/wcs/example_create_imaging.html
+        
+        # Three pixel coordinates of interest.
+        # The pixel coordinates are pairs of [X, Y].
+        # The "origin" argument indicates whether the input coordinates
+        # are 0-based (as in Numpy arrays) or
+        # 1-based (as in the FITS convention, for example coordinates
+        # coming from DS9).
+        pixcrd = np.array([[0, 0], [24, 38], [45, 98]], dtype=np.float64)
+        
+        # Convert pixel coordinates to world coordinates.
+        # The second argument is "origin" -- in this case we're declaring we
+        # have 0-based (Numpy-like) coordinates.    
+        world = w.wcs_pix2world(pixcrd, 0)
+        print(world)
  
+        # Convert the same coordinates back to pixel coordinates.
+        pixcrd2 = wcs.wcs_world2pix(world, 0)
+        print(pixcrd2)
+ 
+        # Now, write out the WCS object as a FITS header
+        header = wcs.to_header()    
+
+        # header is an astropy.io.fits.Header object.  We can use it to create a new
+        # PrimaryHDU and write it to a file.
+        from astropy.io import fits
+        hdu = fits.PrimaryHDU(header=header)
+
+        # Save to FITS file
+        hdu.writeto('test.fits')

@@ -1,7 +1,7 @@
 # Pixel/DMD Coordinate Transformations
 
-In order to accurately predict the pixels corresponding to a set of micromirrors (and vice versa), we need to solve for the affine transformation matrix which will allow us to switch between the CCD and DMD coordinate systems.
-The path to the GUI for this procedure is `SAMOS_DMD_dev/DMD_pixel_mapping_data/DMD_CCD_mapping.py`.  
+In order to accurately predict the pixels corresponding to a set of micromirrors (and vice versa), we need to solve for the transformation matrix which will allow us to switch between the CCD and DMD coordinate systems.  This GUI takes images of a DMD pattern obtained with the SAMOS Imager and uses [Astropy WCS tools](https://docs.astropy.org/en/stable/wcs/index.html) to find a solution that is compatible with the [FITS WCS standard](https://fits.gsfc.nasa.gov/fits_wcs.html).  This is in active development.
+The path of the working directory `SAMOS_DMD_dev/DMD_pixel_mapping_data/`.  
 
 
 ### Step 0
@@ -29,10 +29,10 @@ Now that we have matched coordinates for both the CCD and DMD frames (remember w
  
 There are two transformations that we solve for: ![equation](https://latex.codecogs.com/gif.image?%5Cdpi%7B110%7D%5Cbg%7Bwhite%7D%7B%5Ccolor%7BBlack%7D%20%20%5Ctextbf%7BDMD%7D_%7Bxy%7D%5Crightarrow%20%5Ctextbf%7BCCD%7D_%7Bxy%7D%20%5C%20%5Cmathrm%7Band%7D%20%5C%20%5Ctextbf%7BCCD%7D_%7Bxy%7D%5Crightarrow%20%5Ctextbf%7BDMD%7D_%7Bxy%7D%20%7D)
 
-The names of the transformation functions are `ccd2dmd_wcs` and `dmd2ccd_wcs`, each of which can be inversely applied, giving 8 total transformation functions.
+The names of the transformation functions are `ccd2dmd_wcs` and `dmd2ccd_wcs`, each of which can be inversely applied, giving 4 total coordinate transformation functions.
 
-To check the accuracy of each, this step applies the transformations to the coordinates read from the pattern file (or source extraction table for CCD), and computes the difference between resulting coordinates and the known coordinates.  
-For instance the, the `ccd2dmd_wcs` and (inverse)`dmd2ccd_wcs` transformations are applied to the pixel coordinates in the extracted sources table to produce two estimates for mirror locations on the DMD.  These output mirror coordinates are compared to the coordinates in the DMD pattern table.  The differences between $x_{in},x_{out}$ and $y_{in},y_{out}$ for both transformations are plotted as histograms (Figure 3).  Then, we have to decide which transformation function(s) work best.
+To check the accuracy of each, this step applies the transformations to the coordinates read from the pattern file (or source extraction table for CCD), and computes the difference between resulting X and Y coordinates and the known values.  
+For instance, the `ccd2dmd_wcs` and (inverse)`dmd2ccd_wcs` transformations are applied to the pixel coordinates in the extracted sources table to produce two estimates for mirror locations on the DMD.  These output mirror coordinates are compared to the coordinates in the DMD pattern table.  The differences between $x_{in},x_{out}$ and $y_{in},y_{out}$ for both transformations are plotted as histograms (Figure 3).  Then, we have to decide which transformation function(s) work best.
 
 
 | ![ScreenShot](grid_54x54_coord_transf_output_sip3.png)|

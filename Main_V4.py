@@ -14,13 +14,23 @@ from ginga.tkw.ImageViewTk import ImageViewCanvas
 from ginga.misc import log
 from ginga.util.loader import load_data
 
+from ginga.AstroImage import AstroImage
+img = AstroImage()
+from astropy.io import fits
+
 import tkinter as tk
 from tkinter.filedialog import askopenfilename
+
+### Needed to run ConvertSIlly by C. Loomis
+import math
+import pathlib
+
+
 
 #import sewpy   #to run sextractor wrapper
 
 STD_FORMAT = '%(asctime)s | %(levelname)1.1s | %(filename)s:%(lineno)d (%(funcName)s) | %(message)s'
-# =============================================================================
+# =============================d================================================
 # 
 # from Astrometry import tk_class_astrometry
 # Astrometry = tk_class_astrometry
@@ -28,12 +38,33 @@ STD_FORMAT = '%(asctime)s | %(levelname)1.1s | %(filename)s:%(lineno)d (%(funcNa
 # Astrometry.return_from_astrometry()
 # 
 # =============================================================================
-os.sys.path.append(".")
-os.sys.path.append("./Astrometry")
+import csv
+from pathlib import Path
+#define the local directory, absolute so it is not messed up when this is called
+path = Path(__file__).parent.absolute()
+local_dir = str(path.absolute())
+
+print(local_dir)
+os.sys.path.append(local_dir)
+os.sys.path.append(local_dir+"/Astrometry")
+os.sys.path.append(local_dir+"/SAMOS_CCD_dev")
+os.sys.path.append(local_dir+"/SAMOS_DMD_dev")
+os.sys.path.append(local_dir+"/SAMOS_MOTORS_dev")
+os.sys.path.append(local_dir+"/SAMOS_SOAR_dev")
+os.sys.path.append(local_dir+"/SAMOS_CONFIG_dev")
 
 
-from tk_class_astrometry_V4 import Astrometry
+from SAMOS_CONFIG_dev.CONFIG_GUI import Config
+#print(Config.return_directories)
+
+from SAMOS_Astrometry_dev.tk_class_astrometry_V4 import Astrometry
+from SAMOS_CCD_dev.Class_CCD import Class_Camera as CCD
+from SAMOS_MOTORS_dev.Class_PCM  import Class_PCM as Motors
+from SAMOS_MOTORS_dev.SAMOS_MOTORS_GUI_dev  import Window as SM_GUI
+from SAMOS_DMD_dev.Class_DMD import DigitalMicroMirrorDevice as DMD
+from SAMOS_SOAR_dev.tk_class_SOAR_V0 import SOAR as SOAR
 #from ginga.misc import widgets 
+#import PCM_module_GUI as Motors
 
 class SAMOS_Main(object):
 
@@ -45,7 +76,6 @@ class SAMOS_Main(object):
         root = tk.Tk()
         root.title("SAMOS")
        
-      
         root.geometry("1000x800")   
         
         #root.set_border_width(2)
@@ -64,7 +94,7 @@ class SAMOS_Main(object):
         labelframe_Filters.pack(fill="both", expand="yes")
          
 
-        label_FW1 =  tk.Label(labelframe_Filters, text="Filter Wheel 1")
+        label_FW1 =  tk.Label(labelframe_Filters, text="FW 1")
         label_FW1.place(x=4,y=10)
         # Dropdown menu options
         FW1_options = [
@@ -76,12 +106,15 @@ class SAMOS_Main(object):
             "open"
         ]
         # datatype of menu text
-        self.FW1_filter = tk.StringVar()
+        self.FW1_filter = tk.StringVar() 
         # initial menu text
         self.FW1_filter.set(FW1_options[2])
         # Create Dropdown menu
         self.optionmenu_FW1 = tk.OptionMenu(labelframe_Filters, self.FW1_filter, *FW1_options)
-        self.optionmenu_FW1.place(x=100, y=7)
+        self.optionmenu_FW1.place(x=40, y=8)
+        button_SetFW1 =  tk.Button(labelframe_Filters, text="Set FW1", bd=3)
+        button_SetFW1.place(x=125,y=4)
+
 
 
 # =============================================================================
@@ -93,7 +126,7 @@ class SAMOS_Main(object):
 #         label_FW1_template.place(x=200,y=10)
 #         
 # =============================================================================
-        label_FW2 =  tk.Label(labelframe_Filters, text="Filter Wheel 2")
+        label_FW2 =  tk.Label(labelframe_Filters, text="FW 2")
         label_FW2.place(x=4,y=40)
         # Dropdown menu options
         FW2_options = [
@@ -109,7 +142,10 @@ class SAMOS_Main(object):
         self.FW2_filter.set(FW2_options[4])
         # Create Dropdown menu
         self.optionmenu_FW2 = tk.OptionMenu(labelframe_Filters, self.FW2_filter, *FW2_options)
-        self.optionmenu_FW2.place(x=100, y=37)
+        self.optionmenu_FW2.place(x=40, y=38)
+        button_SetFW2 =  tk.Button(labelframe_Filters, text="Set FW2", bd=3)
+        button_SetFW2.place(x=125,y=34)
+
 
 # =============================================================================
 #         entry_FW2 = tk.Entry(labelframe_Filters, width=11, bd =3)
@@ -206,9 +242,13 @@ class SAMOS_Main(object):
 #         entry_FW2.place(x=100, y=40)
 #         
 # =============================================================================
+        button_FITS_Load =  tk.Button(labelframe_FITSmanager, text="Expose", bd=3, 
+                                           command=self.expose)
+        button_FITS_Load.place(x=0,y=0)
+ 
         button_FITS_Load =  tk.Button(labelframe_FITSmanager, text="FITS Load", bd=3, 
                                            command=self.load_last_file)
-        button_FITS_Load.place(x=0,y=20)
+        button_FITS_Load.place(x=0,y=25)
         
         self.stop_it = 0
         button_FITS_start =  tk.Button(labelframe_FITSmanager, text="FITS start", bd=3, 
@@ -236,6 +276,12 @@ class SAMOS_Main(object):
 
 # 
 # =============================================================================
+        button_show_slits =  tk.Button(labelframe_FITSmanager, text="Show slits", bd=3, 
+#                                            command=Astrometry)
+                                            command=self.show_slits)
+        button_show_slits.place(x=0,y=140)
+
+# =============================================================================
 
 
         vbox = tk.Frame(root, relief=tk.RAISED, borderwidth=1)
@@ -250,9 +296,12 @@ class SAMOS_Main(object):
 # =============================================================================
         menubar = tk.Menu(root)
         filemenu = tk.Menu(menubar, tearoff=0)
-        filemenu.add_command(label="Setup", command=self.donothing)
-        filemenu.add_command(label="Acquisition", command=self.donothing)
-        filemenu.add_command(label="Calibration", command=self.donothing)
+        filemenu.add_command(label="Motors Setup", command=self.load_Motors_module_GUI)
+        filemenu.add_command(label="DMD Setup", command=self.load_DMD_module_GUI)
+        filemenu.add_command(label="SOAR comm Setup", command=self.load_SOAR_module_GUI)
+        filemenu.add_command(label="CCD Acquisition", command=self.load_CCD_module_GUI)
+        filemenu.add_command(label="Astrometry", command=self.load_Astrometry)
+#        filemenu.add_command(label="Config", command=self.CONFIG_GUI)
         filemenu.add_separator()
         filemenu.add_command(label="Exit", command=root.quit)
         menubar.add_cascade(label="File", menu=filemenu)
@@ -345,6 +394,8 @@ class SAMOS_Main(object):
                   wfill, wdrawcolor, wdrawtype, wopen):
             w.pack(side=tk.RIGHT)
 
+#        IPs = Config.load_IP_user(self)
+        #print(IPs)
 # =============================================================================
 #     def open_Astrometry(self):
 #         btn = tk.Button(master,
@@ -376,6 +427,63 @@ class SAMOS_Main(object):
 
     def clear_canvas(self):
         self.canvas.deleteAllObjects()
+
+#ConvertSIlly courtesy of C. Loomis
+    def convertSIlly(self,fname, outname=None):
+    	FITSblock = 2880
+
+    # If no output file given, just prepend "fixed"
+    	if outname is None:
+            fname = pathlib.Path(fname)
+            dd = fname.parent
+            outname = pathlib.Path(fname.parent, 'fixed'+fname.name)
+    
+    	with open(fname, "rb") as in_f:
+            buf = in_f.read()
+
+    # Two fixes:
+    # Header cards:
+    	buf = buf.replace(b'SIMPLE  =                    F', b'SIMPLE  =                    T')
+    	buf = buf.replace(b'BITPIX  =                  -16', b'BITPIX  =                   16')
+    	buf = buf.replace(b"INSTRUME= Spectral Instruments, Inc. 850-406 camera  ", b"INSTRUME= 'Spectral Instruments, Inc. 850-406 camera'")
+    
+    # Pad to full FITS block:
+    	blocks = len(buf) / FITSblock
+    	pad = round((math.ceil(blocks) - blocks) * FITSblock)
+    	buf = buf + (b'\0' * pad)
+    
+    	with open(outname, "wb+") as out_f:
+            out_f.write(buf)
+
+# =============================================================================
+# # Expose
+# 
+# =============================================================================
+
+    def expose(self):
+        #Prepare the exposure parameers
+        params = {'Exposure Time':1234,'CCD Temperature':2300, 'Trigger Mode': 4}
+        Camera= CCD(dict_params=params)
+
+        #Expose
+        data = Camera.expose()
+
+        #Fix the fit header from U16 to I16, creating a new image
+        fits_image = "/Users/robberto/Box/@Massimo/_Python/SAMOS_GUI_dev/fits_image/newimage_fixed.fit"
+        fits_image_converted = "/Users/robberto/Box/@Massimo/_Python/SAMOS_GUI_dev/fits_image/newimage_fixed.fit"             		
+        self.convertSIlly(fits_image,fits_image_converted)
+        #To do: cancel the original image.= If the canera is active; otherwise leave it.
+        #Hence, we need a general switch to activate if the camera is running.
+        #Hence, we may need a general login window.
+
+        #Dsiplay
+        image = load_data(fits_image_converted, logger=self.logger)
+            # AstroImage object of ginga.AstroImage module
+        
+        self.AstroImage = image    #make the AstroImage available
+        self.fitsimage.set_image(image)
+            # passes the image to the viewer through the set_image() method
+        self.root.title(self.fullpath_FITSfilename)
 
     def load_last_file(self):
         FITSfiledir = './fits_image/'
@@ -478,13 +586,40 @@ class SAMOS_Main(object):
 ######
     def donothing(self):
         pass
-       
+
+     
 ######
     def load_Astrometry(self):
-#        print(Astrometry().string_RA.get())
-        Astrometry().receive_radec([self.ra_center,self.dec_center])
-        
-#        self.ra_center, self.dec_center))
+        #=> send center and list coodinates to Astrometry, and start Astrometry!
+        Astrometry().receive_radec([self.ra_center,self.dec_center],[self.ra_list,self.dec_list],self.xy_list)
+
+
+######
+    def load_Motors_module_GUI(self):
+        #calls class "Motors" in tk_class_motors_V1.py; starts the gui and initialize
+        SM_GUI()
+#        Motors()        
+#        pass
+
+######
+    def load_DMD_module_GUI(self):
+        DMD()       
+        pass
+
+######
+    def load_CCD_module_GUI(self):
+        CCD()       
+        pass
+
+######
+    def load_SOAR_module_GUI(self):
+        SOAR()       
+        pass
+
+######
+    def load_CONFIG_GUI(self):
+        print(Config.load_IP_user(self))       
+#        pass
 
 ######
 # from https://sewpy.readthedocs.io/en/latest/
@@ -492,20 +627,42 @@ class SAMOS_Main(object):
         from astropy.stats import sigma_clipped_stats
         from astropy.io import fits
         self.fullpath_FITSfilename
+        import astropy.wcs as wcs
         ### here is the daophot part of the procedure
         hdu = fits.open(self.fullpath_FITSfilename, logger=self.logger)
+
+        ### read the wcs to get radec from the pixels
+        ### see https://docs.astropy.org/en/stable/api/astropy.wcs.WCS.html#astropy.wcs.WCS.pixel_to_world_values
+        w = wcs.WCS(hdu[('sci',1)].header, hdu)
+
         data = hdu[0].data
+        hdu.close()   #good practice
+        
+        #1d background estimate
         sigma = float(self.sigma.get())
         print(sigma)
         mean, median, std = sigma_clipped_stats(data, sigma=sigma)
         print((mean, median, std))  
+        
+        #2d background estimate
+        # FROM https://photutils.readthedocs.io/en/stable/background.html
+        from astropy.stats import SigmaClip
+        from photutils.background import Background2D, MedianBackground
+        sigma_clip = SigmaClip(sigma=3.)
+        bkg_estimator = MedianBackground()
+        bkg = Background2D(data, (50, 50), filter_size=(3, 3), sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
+        median = bkg.background    
+        import matplotlib.pyplot as plt
+        plt.imshow(bkg.background, origin='lower', cmap='Greys_r', interpolation='nearest')
+        
+        
         from photutils.detection import DAOStarFinder
         daofind = DAOStarFinder(fwhm=3.0, threshold=3.*std)  
         sources = daofind(data - median)  
         for col in sources.colnames:  
             sources[col].info.format = '%.8g'  # for consistent table output
         print(sources)  
-        #
+        
 # =============================================================================
 #         self.display_Daofind(sources)
 # =============================================================================
@@ -521,8 +678,54 @@ class SAMOS_Main(object):
         canvas2.show_pan_mark(True)
         x = sources['xcentroid']
         y = sources['ycentroid']
+        
+        ### get radec
+        ### see https://docs.astropy.org/en/stable/api/astropy.wcs.WCS.html#astropy.wcs.WCS.pixel_to_world_values
+        self.ra_list, self.dec_list = w.all_pix2world(x, y, 1)  # we send this to astrometry for cross-matching sources
+        self.xy_list = (x,y)   # we send this to astrometry to build the new wcs
+        #
+
         tag = '_$pan_mark'
         radius = 10
+        color='green'
+#        canvas2 = viewer.get_private_canvas()
+#        viewer.initialize_private_canvas(canvas)
+#        mark = canvas2.get_object_by_tag(tag)
+#        mark.color = color  
+        Point = canvas2.get_draw_class('point')
+ #       canvas2.set.drawtype('cross',color='green')
+#        self.canvas.redraw(whence=3)
+        i=0
+        for i in range(len(x)):
+ #           x[0]=886
+#            y[0]=938
+#            canvas2.add(Point(x[i]/2.-258, y[i]/2-264, radius, style='plus', color=color,                             
+#            canvas2.add(Point( (x[i]/2.-264)*1.01, (y[i]/2-258)*1.01, radius, style='plus', color=color,                             
+#            canvas2.add(Point( (x[i]/2.-264.5), (y[i]/2-258.5), radius, style='plus', color=color,                             
+            canvas2.add(Point( (x[i]-526)/2., (y[i]-514)/2., radius, style='plus', color=color,                             
+                             coord='cartesian'),
+                       redraw=True)#False)
+            print(x[i], y[i],x[i]/2.-264, y[i]/2.-258)
+#            print(x[i], y[i],x[i]/2.-258, y[i]/2.2-258)
+        canvas2.update_canvas(whence=3)
+        print('done')
+
+    def show_slits(self):
+        #### back to ginga
+        self.fitsimage.set_image(self.AstroImage)
+            # passes the image to the viewer through the set_image() method
+
+#        image = load_data(self.fullpath_FITSfilename, logger=self.logger)
+        viewer=self.fitsimage#.set_image(image)   #ImageViewCanvas object of ginga.tkw.ImageViewTk module
+        canvas2 = viewer.get_private_canvas() #ImageViewCanvas object of ginga.tkw.ImageViewTk module
+        canvas2.delete_all_objects(redraw=True)
+        canvas2.show_pan_mark(True)
+        x = [10,110,210,310,410,510,610,710]#sources['xcentroid']
+        y = [10,110,210,310,410,510,610,710]#)sources['ycentroid']
+        Dx = [7,7,  7,  7,  7,  7,  7,  7]
+        Dy = [3,3,  3,  3,  3,  3,  3,  3]
+        tag = '_$pan_mark'
+        radius = 1
         color='green'
 #        canvas2 = viewer.get_private_canvas()
 #        viewer.initialize_private_canvas(canvas)
@@ -538,15 +741,19 @@ class SAMOS_Main(object):
 #            canvas2.add(Point(x[i]/2.-258, y[i]/2-264, radius, style='plus', color=color,                             
 #            canvas2.add(Point( (x[i]/2.-264)*1.01, (y[i]/2-258)*1.01, radius, style='plus', color=color,                             
 #            canvas2.add(Point( (x[i]/2.-264.5), (y[i]/2-258.5), radius, style='plus', color=color,                             
-            canvas2.add(Point( (x[i]-526)/2., (y[i]-514)/2., radius, style='plus', color=color,                             
+            for ix in range(Dx[i]):
+                for iy in range(Dy[i]):
+                    xp = ((x[i] + (ix-int(Dx[i]/2)))-526)/2.
+                    yp = ((y[i] + (iy-int(Dy[i]/2)))-514)/2.
+#                    canvas2.add(Point( (x[i]-526)/2., (y[i]-514)/2., radius, style='square', color='black',                             
+                    canvas2.add(Point( xp, yp, radius, style='square', color='black',                             
                              coord='cartesian'),
                        redraw=True)#False)
             print(x[i], y[i],x[i]/2.-264, y[i]/2.-258)
 #            print(x[i], y[i],x[i]/2.-258, y[i]/2.2-258)
         canvas2.update_canvas(whence=3)
         print('done')
-
-
+    
 
 
 ######

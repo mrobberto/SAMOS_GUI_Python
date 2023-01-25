@@ -6,7 +6,7 @@ Created on Thu Dec 30 10:49:37 2021
 @author: robberto
 """
 import tkinter as tk
-from ginga.tkw.ImageViewTk import ImageViewCanvas
+from ginga.tkw.ImageViewTk import CanvasView
 from ginga.AstroImage import AstroImage
 from ginga.util import io_fits
 from ginga.util.loader import load_data
@@ -162,7 +162,7 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
 #            canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
             canvas.place(x=310,y=5)
                   
-            fi = ImageViewCanvas(logger)
+            fi = CanvasView(logger)
             fi.set_widget(canvas)
 #            fi.set_image(img) 
 #            self.fitsimage.set_image(img)

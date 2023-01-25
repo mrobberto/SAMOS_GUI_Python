@@ -5,6 +5,7 @@ from time import sleep,time
 #from msvcrt import getch,kbhit
 import xml.dom.minidom
 #import sys
+import os
 
 ### Substitute getch from https://www.reddit.com/r/learnpython/comments/7036k5/can_i_use_getch_on_macos_x/
 import sys, tty, termios
@@ -19,6 +20,7 @@ path = Path(__file__).parent.absolute()
 local_dir = str(path.absolute())
 parent_dir = str(path.parent)   
 sys.path.append(parent_dir)
+
 from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
 
 
@@ -31,15 +33,16 @@ class Class_Camera(object):
         self.TriggerMode = dict_params['Trigger Mode']
  
         IP_status_dict = SF.read_IP_status()
-        IP_dict = SF.read_IP_user()
-        print(IP_status_dict)
+        IP_dict = SF.read_IP_default()
+        print(IP_status_dict,IP_dict)
         if IP_status_dict['IP_CCD'] == 'True':
-            self.IP_Host = str((IP_dict['IP_CCD'])[:15])
-            self.IP_Port = int((IP_dict['IP_CCD'])[16:])
+            self.IP_Host = str(IP_dict['IP_CCD']).split(':')[0]
+            self.IP_Port = int(str(IP_dict['IP_CCD']).split(':')[1])
         else: 
             print('CCD NOT CONNECTED')
  
-        self.params = {'Host': '128.220.146.254', 'Port': 8900}
+#        self.params = {'Host': '128.220.146.254', 'Port': 8900}
+        self.params = {'Host': '172.16.0.245', 'Port': 80}
 
     def getch(char_width=1):
         '''get a fixed number of typed characters from the terminal. 
@@ -487,7 +490,7 @@ class Class_Camera(object):
     	# Combine the various XML parameter files
     	xml_str=self.get_url_as_string(target+'setup.xml')
     	if len(xml_str)<9:
-    		exit()
+    		sys.exit()
     	i,j=self.param_bounds(xml_str)
     	xml_hdr=xml_str[0:i]
     	xml_param=xml_str[i:j]
@@ -617,7 +620,7 @@ class Class_Camera(object):
             
     		# write to file
             
-    		fileout = "/Users/robberto/Box/@Massimo/_Python/SAMOS_GUI_dev/fits_image/newimage.fit"
+    		fileout = parent_dir + "/fits_image/newimage.fit"
     		newFile = open(fileout, "wb")
     		newFile.write(data)
 

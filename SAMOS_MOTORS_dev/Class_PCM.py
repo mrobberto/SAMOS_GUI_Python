@@ -74,17 +74,23 @@ class Class_PCM():
     
 
     def __init__(self): 
-        IP_status_dict = SF.read_IP_status()
-        IP_dict = SF.read_IP_user()
+        IP_status_dict = SF.read_IP_initial_status()
+#        IP_dict = SF.read_IP_user()
+        IP_dict = SF.read_IP_default()
         print(IP_dict)
         print(IP_status_dict)
+        self.MOTORS_onoff = 0
         if IP_status_dict['IP_Motors'] == 'True':
-            self.IP_Host = str((IP_dict['IP_PCM'])[:12]) #str((IP_dict['IP_Motors'])[:15])
-            self.IP_Port = int((IP_dict['IP_PCM'])[13:]) #int((IP_dict['IP_Motors'])[16:])
+#            self.IP_Host = str((IP_dict['IP_PCM'])[:12]) #str((IP_dict['IP_Motors'])[:15])
+#            self.IP_Port = int((IP_dict['IP_PCM'])[13:]) #int((IP_dict['IP_Motors'])[16:])
+            self.IP_Host = str((IP_dict['IP_Motors'])[:12]) #str((IP_dict['IP_Motors'])[:15])
+            self.IP_Port = int((IP_dict['IP_Motors'])[13:]) #int((IP_dict['IP_Motors'])[16:])
+            self.MOTORS_onoff = 1
         else: 
+#            self.MOTORS_onoff = 0
             print('MOTORS NOT CONNECTED')
  
-        self.params = {'Host': '128.220.146.254', 'Port': 8889}
+#        self.params = {'Host': '128.220.146.254', 'Port': 8889}
         #self.params = {'Host': '172.16.0.128', 'Port': 1000}
     #       cwd = os.getcwd()
  #       dir_motors = '/SAMOS_MOTORS_dev'

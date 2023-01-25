@@ -6,138 +6,218 @@ Created on Thu Dec 30 10:49:37 2021
 @author: robberto
 """
 import tkinter as tk
-from ginga.tkw.ImageViewTk import CanvasView
-from ginga.canvas.CanvasObject import get_canvas_types
-
-#from ginga.tkw.ImageViewTk import ImageViewCanvas
-from ginga.AstroImage import AstroImage
-from ginga.util import io_fits
-from ginga.util.loader import load_data
-from ginga.misc import log
+from tkinter import ttk
 
 
-class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.Toplevel widget
-#    def __init__(self, master=None):
+class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel widget
     def __init__(self, master=None):  #__init__ constructor method. 
-        #>>> AM = Astrometry(master) would be an instance of the class Astrometry that you can call with its functions, e.g.
-        #>>> AM.show_Simbad()
     
-        logger = log.get_logger("example1", log_stderr=True)
-        self.logger = logger
+#        logger = log.get_logger("example2", log_stderr=True)
+#        self.logger = logger
         
         super().__init__(master = master) 
         #super() recalls and includes the __init__() of the master class (tk.Topelevel), so one can use that stuff there without copying the code.
         
         
-        self.title("Astrometry")
+        self.title("CCD Setup")
         self.geometry("900x600")
-        label = tk.Label(self, text ="This is the Astrometry Window")
+        label = tk.Label(self, text ="This is the CCD Window")
         label.pack()
 
   
 #       
         self.frame0l = tk.Frame(self,background="cyan")#, width=300, height=300)
-        self.frame0l.place(x=0, y=0, anchor="nw", width=890, height=590)
+        self.frame0l.place(x=0, y=0, anchor="nw", width=950, height=590)
 
 # =============================================================================
-#      ENTER COORDINATES
+#      REFERENCE FILES
 # 
+
+
+
+
 # =============================================================================
-        labelframe_EnterCoordinates =  tk.LabelFrame(self.frame0l, text="Enter Coordinates", 
-                                                     width=300,height=140,
-                                                     font=("Arial", 24))
-        labelframe_EnterCoordinates.place(x=5,y=5)
+#         
+#  #    ACQUIRE IMAGE Label Frame
+#         
+# =============================================================================
+        self.frame2l = tk.Frame(self.frame0l,background="cyan")#, width=400, height=800)
+        self.frame2l.place(x=4, y=4, anchor="nw", width=420, height=400)
 
-        label_EnterRA =  tk.Label(labelframe_EnterCoordinates, text="RA")
-        label_EnterRA.place(x=4,y=10)
-        self.string_RA_center = tk.StringVar(value="00:00:00.0")
-        entry_RA = tk.Entry(labelframe_EnterCoordinates, width=11,  bd =3, textvariable=self.string_RA_center)
-        entry_RA.place(x=40, y=8)
-        label_RA_template =  tk.Label(labelframe_EnterCoordinates, text="(HH:MM:SS.x)")
-        label_RA_template.place(x=150,y=10)
-
-        label_EnterDEC =  tk.Label(labelframe_EnterCoordinates, text="DEC")
-        label_EnterDEC.place(x=4,y=40)
-        self.string_DEC_center= tk.StringVar(value="+00:00:00.00")
-        entry_DEC = tk.Entry(labelframe_EnterCoordinates, width=11,  bd =3, textvariable=self.string_DEC_center)
-        entry_DEC.place(x=40, y=38)
-        label_DEC_template =  tk.Label(labelframe_EnterCoordinates, text="(\u00b1DD:MM:SS.xx)")
-        label_DEC_template.place(x=150,y=40)
-
-        label_EnterEpoch =  tk.Label(labelframe_EnterCoordinates, text="Epoch")
-        label_EnterEpoch.place(x=4,y=70)
-        self.string_Epoch= tk.StringVar(value="2000.0")
-        entry_Epoch = tk.Entry(labelframe_EnterCoordinates, width=6,  bd =3, textvariable=self.string_Epoch)
-        entry_Epoch.place(x=40, y=68)
-        label_Epoch_template =  tk.Label(labelframe_EnterCoordinates, text="e.g. 2000.0")
-        label_Epoch_template.place(x=110,y=70)
+         
   
+  
+#        root = tk.Tk()
+#        root.title("Tab Widget")
+        tabControl = ttk.Notebook(self.frame2l)
+  
+        tab1 = ttk.Frame(tabControl)
+        tab2 = ttk.Frame(tabControl)
+        tab3 = ttk.Frame(tabControl)
+        tab4 = ttk.Frame(tabControl)
+  
+        tabControl.add(tab1, text ='Image')
+        tabControl.add(tab2, text ='Bias')
+        tabControl.add(tab3, text ='Dark')
+        tabControl.add(tab4, text ='Flat')
+        tabControl.pack(expand = 1, fill ="both")
+  
+# =============================================================================
+#      SCIENCE
+# =============================================================================
+
+        labelframe_Acquire =  tk.LabelFrame(tab1, text="Acquire Image", font=("Arial", 24))
+        labelframe_Acquire.pack(fill="both", expand="yes")
+#        labelframe_Grating.place(x=4, y=10)
+
+        label_ExpTime =  tk.Label(labelframe_Acquire, text="Exp. Time (s)")
+        label_ExpTime.place(x=4,y=10)
+        self.ExpTime=tk.StringVar()
+        self.ExpTime.set("0.01")
+        entry_ExpTime = tk.Entry(labelframe_Acquire, textvariable=self.ExpTime, width=5,  bd =3)
+        entry_ExpTime.place(x=100, y=10)
+
+        label_ObjectName =  tk.Label(labelframe_Acquire, text="Object Name:")
+        label_ObjectName.place(x=4,y=30)
+        entry_ObjectName = tk.Entry(labelframe_Acquire, width=11,  bd =3)
+        entry_ObjectName.place(x=100, y=30)
+
+        label_Comment =  tk.Label(labelframe_Acquire, text="Comment:")
+        label_Comment.place(x=4,y=50)
+#        scrollbar = tk.Scrollbar(orient="horizontal")
+        entry_Comment = tk.Entry(labelframe_Acquire, width=11,  bd =3)# , xscrollcommand=scrollbar.set)
+        entry_Comment.place(x=100, y=50)
+
+        button_ExpStart=  tk.Button(labelframe_Acquire, text="START", bd=3, bg='#0052cc',font=("Arial", 24))#,
+                                         #  command=self.expose)
+        button_ExpStart.place(x=50,y=75)
+
+
+# =============================================================================
+#      BIAS
+# =============================================================================
+        labelframe_Bias =  tk.LabelFrame(tab2, text="Bias", 
+                                                     width=300, height=170,
+                                                     font=("Arial", 24))
+        labelframe_Bias.pack(fill="both", expand="yes")
+
+#        labelframe_Bias.place(x=5,y=5)
+        label_Bias_ExpT =  tk.Label(labelframe_Bias, text="Exposure time (s):")
+        label_Bias_ExpT.place(x=4,y=10)
+        self.Bias_ExpT = tk.StringVar(value="0.00")
+        entry_Bias_ExpT = tk.Entry(labelframe_Bias, width=6,  bd =3, textvariable=self.Bias_ExpT)
+        entry_Bias_ExpT.place(x=120, y=6)
+        
+        label_Bias_NofFrames =  tk.Label(labelframe_Bias, text="Nr. of Frames:")
+        label_Bias_NofFrames.place(x=4,y=40)
+        self.Bias_NofFrames = tk.StringVar(value="10")
+        entry_Bias_NofFrames = tk.Entry(labelframe_Bias, width=5,  bd =3, textvariable=self.Bias_NofFrames)
+        entry_Bias_NofFrames.place(x=100, y=38)
+        
+        
+        var_Bias_saveall = tk.IntVar()
+        r1_Bias_saveall = tk.Radiobutton(labelframe_Bias, text = "Save single frames", variable=var_Bias_saveall, value=1)
+        r1_Bias_saveall.place(x=150, y=38)
+
+        label_Bias_MasterFile =  tk.Label(labelframe_Bias, text="Master Bias File:")
+        label_Bias_MasterFile.place(x=4,y=70)
+        self.Bias_MasterFile = tk.StringVar(value="Bias")
+        entry_Bias_MasterFile = tk.Entry(labelframe_Bias, width=11,  bd =3, textvariable=self.Bias_MasterFile)
+        entry_Bias_MasterFile.place(x=120, y=68)
+
+        button_ExpStart=  tk.Button(labelframe_Bias, text="START", bd=3, bg='#0052cc',font=("Arial", 24))#,
+#                                          command=expose)
+        button_ExpStart.place(x=75,y=95)
+  
+#        root.mainloop()  
+
+
+
+
         
 # =============================================================================
-#      QUERY SIMBAD
-# 
+#      Dark
 # =============================================================================
-        labelframe_Query_Simbad =  tk.LabelFrame(self.frame0l, text="Query Simbad", 
-                                                     width=300,height=140,
+        labelframe_Dark =  tk.LabelFrame(tab3, text="Dark", 
+                                                     width=300, height=170,
                                                      font=("Arial", 24))
-        labelframe_Query_Simbad.place(x=5, y=150)
+        labelframe_Dark.pack(fill="both", expand="yes")
 
-        button_Query_Simbad =  tk.Button(labelframe_Query_Simbad, text="Query Simbad", bd=3, command=self.Query_Simbad)
-        button_Query_Simbad.place(x=5, y=35)
-
-
-        button_Show_Simbad =  tk.Button(labelframe_Query_Simbad, text="Show Simbad", bd=3, command=self.Show_Simbad)
-        button_Show_Simbad.place(x=5, y=65)
-
-
-        self.label_SelectSurvey = tk.Label(labelframe_Query_Simbad, text="Survey")
-        self.label_SelectSurvey.place(x=5, y=5)
-#        # Dropdown menu options
-        Survey_options = [
-             "DSS",
-             "DSS2/red",
-             "CDS/P/AKARI/FIS/N160",
-             "PanSTARRS/DR1/z",
-             "2MASS/J",
-             "GALEX",
-             "AllWISE/W3"]
-#        # datatype of menu text
-        self.Survey_selected = tk.StringVar()
-#        # initial menu text
-        self.Survey_selected.set(Survey_options[0])
-#        # Create Dropdown menu
-        self.menu_Survey = tk.OptionMenu(labelframe_Query_Simbad, self.Survey_selected ,  *Survey_options)
-        self.menu_Survey.place(x=65, y=5)
-
-        print(self.Survey_selected.get())
-
+        label_Dark_ExpT =  tk.Label(labelframe_Dark, text="Exposure time (s):")
+        label_Dark_ExpT.place(x=4,y=10)
+        self.Dark_ExpT = tk.StringVar(value="0.00")
+        entry_Dark_ExpT = tk.Entry(labelframe_Dark, width=6,  bd =3, textvariable=self.Dark_ExpT)
+        entry_Dark_ExpT.place(x=120, y=6)
         
-        self.readout_Simbad = tk.Label(self.frame0l, text='')
+        label_Dark_NofFrames =  tk.Label(labelframe_Dark, text="Nr. of Frames:")
+        label_Dark_NofFrames.place(x=4,y=40)
+        self.Dark_NofFrames = tk.StringVar(value="10")
+        entry_Dark_NofFrames = tk.Entry(labelframe_Dark, width=5,  bd =3, textvariable=self.Dark_NofFrames)
+        entry_Dark_NofFrames.place(x=100, y=38)
+        
+        
+        var_Dark_saveall = tk.IntVar()
+        r1_Dark_saveall = tk.Radiobutton(labelframe_Dark, text = "Save single frames", variable=var_Dark_saveall, value=1)
+        r1_Dark_saveall.place(x=150, y=38)
+
+        label_Dark_MasterFile =  tk.Label(labelframe_Dark, text="Master Dark File:")
+        label_Dark_MasterFile.place(x=4,y=70)
+        self.Dark_MasterFile = tk.StringVar(value="Dark")
+        entry_Dark_MasterFile = tk.Entry(labelframe_Dark, width=11,  bd =3, textvariable=self.Dark_MasterFile)
+        entry_Dark_MasterFile.place(x=120, y=68)
+
+        button_ExpStart=  tk.Button(labelframe_Dark, text="START", bd=3, bg='#0052cc',font=("Arial", 24))#,
+#                                          command=expose)
+        button_ExpStart.place(x=75,y=95)
+
 # =============================================================================
-#      QUERY Gaia
-# 
+#      Flat
 # =============================================================================
-        labelframe_Query_Gaia =  tk.LabelFrame(self.frame0l, text="Query Gaia", 
-                                                     width=300,height=140,
+        labelframe_Flat =  tk.LabelFrame(tab4, text="Flat", 
+                                                     width=300, height=170,
                                                      font=("Arial", 24))
-        labelframe_Query_Gaia.place(x=5,y=300)
+        labelframe_Flat.pack(fill="both", expand="yes")
 
-        button_Query_Gaia =  tk.Button(labelframe_Query_Gaia, text="Query Gaia", bd=3, command=self.Query_Gaia)
-        button_Query_Gaia.place(x=5,y=5)
+        label_Flat_ExpT =  tk.Label(labelframe_Flat, text="Exposure time (s):")
+        label_Flat_ExpT.place(x=4,y=10)
+        self.Flat_ExpT = tk.StringVar(value="0.00")
+        entry_Flat_ExpT = tk.Entry(labelframe_Flat, width=6,  bd =3, textvariable=self.Flat_ExpT)
+        entry_Flat_ExpT.place(x=120, y=6)
+        
+        label_Flat_NofFrames =  tk.Label(labelframe_Flat, text="Nr. of Frames:")
+        label_Flat_NofFrames.place(x=4,y=40)
+        self.Flat_NofFrames = tk.StringVar(value="10")
+        entry_Flat_NofFrames = tk.Entry(labelframe_Flat, width=5,  bd =3, textvariable=self.Flat_NofFrames)
+        entry_Flat_NofFrames.place(x=100, y=38)
+        
+        
+        var_Flat_saveall = tk.IntVar()
+        r1_Flat_saveall = tk.Radiobutton(labelframe_Flat, text = "Save single frames", variable=var_Flat_saveall, value=1)
+        r1_Flat_saveall.place(x=150, y=38)
+
+        label_Flat_MasterFile =  tk.Label(labelframe_Flat, text="Master Flat File:")
+        label_Flat_MasterFile.place(x=4,y=70)
+        self.Flat_MasterFile = tk.StringVar(value="Flat")
+        entry_Flat_MasterFile = tk.Entry(labelframe_Flat, width=11,  bd =3, textvariable=self.Flat_MasterFile)
+        entry_Flat_MasterFile.place(x=120, y=68)
+
+        button_ExpStart=  tk.Button(labelframe_Flat, text="START", bd=3, bg='#0052cc',font=("Arial", 24))#,
+#                                          command=expose)
+        button_ExpStart.place(x=75,y=95)
 
 
-# =============================================================================
-# #           LAST TWO LINES
-# =============================================================================
 
-        self.hbox = tk.Frame(self.frame0l)
-        self.hbox.pack(side=tk.BOTTOM, fill=tk.X, expand=0)
-#        self.hbox.place(x=0,y=560)
-   
-        self.readout_Simbad = tk.Label(self.frame0l, text='tbd')
-        self.readout_Simbad.pack(side=tk.BOTTOM, fill=tk.X, expand=0)
-#        self.readout_Simbad.place(x=0,y=530)
-
+        label_Display =  tk.Label(labelframe_Acquire, text="Subtract for Display:")
+        label_Display.place(x=4,y=120)
+        subtract_Bias = tk.IntVar()
+        check_Bias = tk.Checkbutton(labelframe_Acquire, text='Bias',variable=subtract_Bias, onvalue=1, offvalue=0)
+        check_Bias.place(x=4, y=140)
+        subtract_Dark = tk.IntVar()
+        check_Dark = tk.Checkbutton(labelframe_Acquire, text='Dark',variable=subtract_Dark, onvalue=1, offvalue=0)
+        check_Dark.place(x=60,y=140)
+        subtract_Flat = tk.IntVar()
+        check_Flat = tk.Checkbutton(labelframe_Acquire, text='Flat',variable=subtract_Flat, onvalue=1, offvalue=0)
+        check_Flat.place(x=120,y=140)
 
 # =============================================================================
 #      SHOW SIMBAD IMAGE
@@ -165,7 +245,7 @@ class Astrometry(tk.Toplevel):     #the astrometry class inherits from the tk.To
 #            canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
             canvas.place(x=310,y=5)
                   
-            fi = ImageViewCanvas(logger)
+            fi = CanvasView(logger)
             fi.set_widget(canvas)
 #            fi.set_image(img) 
 #            self.fitsimage.set_image(img)

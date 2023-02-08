@@ -8,6 +8,8 @@
 # Please see the file LICENSE.txt for details.
 #
 import sys
+sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
+
 import os
 import threading
 

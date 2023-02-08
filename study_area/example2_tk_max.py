@@ -6,7 +6,7 @@
 # Please see the file LICENSE.txt for details.
 #
 import sys
-sys.path.append('/opt/anaconda3/envs/samos_env/bin')
+sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
 
 from ginga.tkw.ImageViewTk import CanvasView
 from ginga.misc import log
@@ -312,8 +312,21 @@ class FitsViewer(object):
               
         #write the regions to file
         #this does not seem to work...
-        #RRR.write('/Users/robberto/Desktop/new_regions.reg', format='ds9')
-           
+        RRR.write('/Users/SAMOS_dev/Desktop/new_regions.reg', format='ds9',overwrite=True)
+        
+        #reading back the ds9 regions in ginga
+        pyregions = Regions.read('/Users/SAMOS_dev/Desktop/new_regions.reg', format='ds9')
+        n_regions = len(pyregions)
+        regionlist = [dict() for x in range(n_regions)]
+        self.canvas.set_drawtype("box",color="green",fillalpha=0.3,fill=True)
+        for i in range(n_regions):
+            regionlist[i] = ap_region.astropy_region_to_ginga_canvas_object(pyregions[i])
+            h=regionlist[i]
+            h.width=40
+            h.height=60
+            self.canvas.add(h)
+        print("boh...?")            
+        
             
 
     def cursor_cb(self, viewer, button, data_x, data_y):

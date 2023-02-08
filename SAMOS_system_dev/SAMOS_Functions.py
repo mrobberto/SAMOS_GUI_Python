@@ -84,13 +84,5 @@ class Class_SAMOS_Functions:
             
         return dict_from_csv       
 
-    def read_IP_status():
-        dict_from_csv = {}
-
-        with open(local_dir+"/IP_status_dict.csv", mode='r') as inp:
-            reader = csv.reader(inp)
-            dict_from_csv = {rows[0]:rows[1] for rows in reader}
-            
-        return dict_from_csv       
-    
 #print(SF.read_IP_user())    
+

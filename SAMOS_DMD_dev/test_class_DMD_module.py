@@ -22,6 +22,7 @@ t0=time.perf_counter()
 # First let's instantiate our controller object
 # Config ID can map to device specifics in the future
 # I've left that up to whomever write the upper levels for the STUF
+
 dmd = DigitalMicroMirrorDevice()#config_id='pass') 
 dmd.initialize()
 
@@ -33,7 +34,7 @@ dmd.initialize()
 dmd._open()
 #dmd.apply_checkerboard()
 #dmd.apply_blackout()
-dmd.apply_whiteout()
+#dmd.apply_whiteout()
 #dmd.apply_invert()
 
 #dmd.send_smart_whiteout()
@@ -42,11 +43,11 @@ dmd.apply_whiteout()
 #find center
 # =============================================================================
 # # =============================================================================
-# test_shape = np.ones((1080,2048)) # This is the size of the DC2K
+#test_shape = np.ones((1080,2048)) # This is the size of the DC2K
 # test_shape[427:543,1021:1027] = 0
 # # =============================================================================
-# test_shape[200:220,200:220] = 0
-# test_shape[300:320,500:510] = 0
+#test_shape[200:220,200:220] = 0
+#test_shape[300:320,500:510] = 0
 # # =============================================================================
 # test_shape[400:410,600:602] = 0
 # test_shape[547:563,700:737] = 0
@@ -61,7 +62,7 @@ dmd.apply_whiteout()
 # test_shape[940:960,1980:2048] = 0
 # # # =============================================================================
 # # =============================================================================
-# dmd.apply_shape(test_shape)
+#dmd.apply_shape(test_shape)
 # 
 # =============================================================================
 # # > CCD:515,488 = DMD:540,1024
@@ -69,12 +70,12 @@ dmd.apply_whiteout()
 
 #pinholes for scale
 # =============================================================================
-# test_shape = np.ones((1080,2048)) # This is the size of the DC2K
-# xc = 540
-# yc=1024
-# test_shape[xc-1:xc+1,yc-1:yc+1] = 0
+#test_shape = np.ones((1080,2048)) # This is the size of the DC2K
+#xc = 540
+#yc=1024
+#test_shape[xc-1:xc+1,yc-1:yc+1] = 0
 # 
-# test_shape[xc-1:xc+1,yc-1:yc+1] = 0
+#test_shape[xc-1:xc+1,yc-1:yc+1] = 0
 # # > CCD:515,488 = DMD:540,1024
 # =============================================================================
 
@@ -132,7 +133,7 @@ dmd.apply_whiteout()
 # slits = [slit1,slit2,slit3,slit4,slit5,slit6,slit7,slit8,slit9,slit10,slit11,slit12]
 # #slits=[slit1,slit11,slit12]
 # #slits=[slit1]
-# print(slits)
+#print(slits)
 # dmd.apply_slits(slits)
 
 import pandas as pd
@@ -144,9 +145,9 @@ y1 = (round(table['x'])-np.floor(table['dx1'])).astype(int) + yoffset
 y2 = (round(table['x'])+np.ceil(table['dx2'])).astype(int) + yoffset
 x1 = (round(table['y'])-np.floor(table['dy1'])).astype(int) + xoffset
 x2 = (round(table['y'])+np.ceil(table['dy2'])).astype(int) + xoffset
-test_shape = np.ones((1080,2048)) # This is the size of the DC2K
-for i in table.index:
-    test_shape[x1[i]:x2[i],y1[i]:y2[i]]=0
+#test_shape = np.ones((1080,2048)) # This is the size of the DC2K
+#for i in table.index:
+#    test_shape[x1[i]:x2[i],y1[i]:y2[i]]=0
 #dmd.apply_shape(test_shape)
 
 #dmd.apply_invert()    
@@ -156,3 +157,27 @@ print('\m elapsed',t1-t0,' seconds')
 # # =============================================================================
 # =============================================================================
 
+
+#pinholes for scale
+# =============================================================================
+#...
+test_shape = np.ones((1080,2048)) # This is the size of the DC2K
+xc = 540
+yc = 1024
+#test_shape[0:5,0:2048] = 0
+#test_shape[1076:1081,0:2048] = 0
+#test_shape[0:1080,512:517] = 0
+#test_shape[0:1080,1531:1536] = 0
+for i in range(3,xc,10):
+    print([xc-i,xc-i+1,yc-i,yc-i+1])
+    test_shape[xc-i-2:xc-i+3,yc-i-2:yc-i+3] = 0
+    test_shape[xc-i-2:xc-i+3,yc+i-2:yc+i+3] = 0
+    test_shape[xc+i-2:xc+i+3,yc-i-2:yc-i+3] = 0
+    test_shape[xc+i-2:xc+i+3,yc+i-2:yc+i+3] = 0   
+#import matplotlib.pyplot as plt
+plt.imshow(test_shape)
+plt.show()
+dmd.apply_shape(test_shape)
+#pd_cross = pd.DataFrame(test_shape)
+#pd_cross.to_csv("cross.csv")
+#...

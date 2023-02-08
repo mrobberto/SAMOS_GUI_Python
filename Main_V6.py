@@ -1,3 +1,5 @@
+
+
 #! /usr/bin/env python
 #
 # example2_tk.py -- Simple, configurable FITS viewer.
@@ -27,6 +29,8 @@ from tkinter.filedialog import askopenfilename
 import math
 import pathlib
 from astropy.io import ascii
+import numpy as np
+import glob
 
 #import sewpy   #to run sextractor wrapper
 
@@ -46,7 +50,6 @@ path = Path(__file__).parent.absolute()
 local_dir = str(path.absolute())
 sys.path.append(local_dir)
 
-
 print("line 48 main local",local_dir)
 os.sys.path.append(local_dir)
 os.sys.path.append(local_dir+"/Astrometry")
@@ -63,11 +66,12 @@ from SAMOS_CONFIG_dev.CONFIG_GUI import Config
 from SAMOS_Astrometry_dev.tk_class_astrometry_V4 import Astrometry
 from SAMOS_CCD_dev.GUI_CCD_dev import GUI_CCD
 
-from SAMOS_CCD_dev.Class_CCD import Class_Camera as CCD
+from SAMOS_CCD_dev.Class_CCD_dev import Class_Camera as CCD
 from SAMOS_MOTORS_dev.Class_PCM  import Class_PCM 
 Motors  = Class_PCM()
 from SAMOS_MOTORS_dev.SAMOS_MOTORS_GUI_dev  import Window as SM_GUI
 from SAMOS_DMD_dev.Class_DMD import DigitalMicroMirrorDevice as DMD
+from SAMOS_DMD_dev.SAMOS_DMD_GUI_dev import GUI_DMD 
 from SAMOS_SOAR_dev.tk_class_SOAR_V0 import SOAR as SOAR
 from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
 #from ginga.misc import widgets 
@@ -98,6 +102,30 @@ class SAMOS_Main(object):
         # will be used to write "OtherParameters.txt" 
         self.extra_header_params = 0
         self.header_entry_string = '' #keep string of entries to write to a file after acquisition.
+
+# =============================================================================
+# #
+# # Menu Bar goes into the mac header...
+# #
+# =============================================================================
+        menubar = tk.Menu(root)
+        filemenu = tk.Menu(menubar, tearoff=0)
+        filemenu.add_command(label="Motors Setup", command=self.load_Motors_module_GUI)
+        filemenu.add_command(label="DMD Setup", command=self.load_DMD_module_GUI)
+        filemenu.add_command(label="SOAR comm Setup", command=self.load_SOAR_module_GUI)
+        filemenu.add_command(label="CCD Acquisition", command=self.load_CCD_module_GUI)
+        filemenu.add_command(label="Astrometry", command=self.load_Astrometry)
+#        filemenu.add_command(label="Config", command=self.CONFIG_GUI)
+        filemenu.add_separator()
+        filemenu.add_command(label="Exit", command=root.quit)
+        menubar.add_cascade(label="File", menu=filemenu)
+        root.config(menu=menubar)
+        
+        helpmenu = tk.Menu(menubar, tearoff=0)
+        helpmenu.add_command(label="Help Index", command=self.donothing)
+        helpmenu.add_command(label="About...", command=self.donothing)
+        menubar.add_cascade(label="Help", menu=helpmenu)
+        root.config(menu=menubar)                
         
         
 # =============================================================================
@@ -281,7 +309,7 @@ class SAMOS_Main(object):
 #         
 # =============================================================================
         self.frame2l = tk.Frame(root,background="cyan")#, width=400, height=800)
-        self.frame2l.place(x=4, y=240, anchor="nw", width=220, height=200)
+        self.frame2l.place(x=0, y=240, anchor="nw", width=370, height=280)
 
 #        root = tk.Tk()
 #        root.title("Tab Widget")
@@ -308,26 +336,37 @@ class SAMOS_Main(object):
 
         label_ExpTime =  tk.Label(labelframe_Acquire, text="Exp. Time (s)")
         label_ExpTime.place(x=4,y=10)
-        self.ExpTime=tk.StringVar()
-        self.ExpTime.set("0.01")
-        entry_ExpTime = tk.Entry(labelframe_Acquire, textvariable=self.ExpTime, width=5,  bd =3)
+        self.Light_ExpT=tk.StringVar()
+        self.Light_ExpT.set("0.01")
+        entry_ExpTime = tk.Entry(labelframe_Acquire, textvariable=self.Light_ExpT, width=5,  bd =3)
         entry_ExpTime.place(x=100, y=10)
 
         label_ObjectName =  tk.Label(labelframe_Acquire, text="Object Name:")
-        label_ObjectName.place(x=4,y=30)
+        label_ObjectName.place(x=4,y=40)
         entry_ObjectName = tk.Entry(labelframe_Acquire, width=11,  bd =3)
-        entry_ObjectName.place(x=100, y=30)
+        entry_ObjectName.place(x=100, y=38)
 
         label_Comment =  tk.Label(labelframe_Acquire, text="Comment:")
-        label_Comment.place(x=4,y=50)
+        label_Comment.place(x=4,y=70)
 #        scrollbar = tk.Scrollbar(orient="horizontal")
         entry_Comment = tk.Entry(labelframe_Acquire, width=11,  bd =3)# , xscrollcommand=scrollbar.set)
-        entry_Comment.place(x=100, y=50)
+        entry_Comment.place(x=100, y=68)
 
         button_ExpStart=  tk.Button(labelframe_Acquire, text="START", bd=3, bg='#0052cc',font=("Arial", 24),
-                                         command=self.expose)
-        button_ExpStart.place(x=50,y=75)
+                                         command=self.expose_light)
+        button_ExpStart.place(x=75,y=95)
 
+        label_Display =  tk.Label(labelframe_Acquire, text="Subtract for Display:")
+        label_Display.place(x=4,y=135)
+        self.subtract_Bias = tk.IntVar()
+        check_Bias = tk.Checkbutton(labelframe_Acquire, text='Bias',variable=self.subtract_Bias, onvalue=1, offvalue=0)
+        check_Bias.place(x=4, y=155)
+        self.subtract_Dark = tk.IntVar()
+        check_Dark = tk.Checkbutton(labelframe_Acquire, text='Dark',variable=self.subtract_Dark, onvalue=1, offvalue=0)
+        check_Dark.place(x=60,y=155)
+        self.subtract_Flat = tk.IntVar()
+        check_Flat = tk.Checkbutton(labelframe_Acquire, text='Flat',variable=self.subtract_Flat, onvalue=1, offvalue=0)
+        check_Flat.place(x=120,y=155)
 
 # =============================================================================
 #      BIAS
@@ -351,9 +390,9 @@ class SAMOS_Main(object):
         entry_Bias_NofFrames.place(x=100, y=38)
         
         
-        var_Bias_saveall = tk.IntVar()
-        r1_Bias_saveall = tk.Radiobutton(labelframe_Bias, text = "Save single frames", variable=var_Bias_saveall, value=1)
-        r1_Bias_saveall.place(x=150, y=38)
+        self.var_Bias_saveall = tk.IntVar()
+        r1_Bias_saveall = tk.Radiobutton(labelframe_Bias, text = "Save single frames", variable=self.var_Bias_saveall, value=1)
+        r1_Bias_saveall.place(x=160, y=38)
 
         label_Bias_MasterFile =  tk.Label(labelframe_Bias, text="Master Bias File:")
         label_Bias_MasterFile.place(x=4,y=70)
@@ -362,7 +401,7 @@ class SAMOS_Main(object):
         entry_Bias_MasterFile.place(x=120, y=68)
 
         button_ExpStart=  tk.Button(labelframe_Bias, text="START", bd=3, bg='#0052cc',font=("Arial", 24),
-                                          command=self.expose)
+                                          command=self.expose_bias)
         button_ExpStart.place(x=75,y=95)
   
 #        root.mainloop()  
@@ -392,9 +431,9 @@ class SAMOS_Main(object):
         entry_Dark_NofFrames.place(x=100, y=38)
         
         
-        var_Dark_saveall = tk.IntVar()
-        r1_Dark_saveall = tk.Radiobutton(labelframe_Dark, text = "Save single frames", variable=var_Dark_saveall, value=1)
-        r1_Dark_saveall.place(x=150, y=38)
+        self.var_Dark_saveall = tk.IntVar()
+        r1_Dark_saveall = tk.Radiobutton(labelframe_Dark, text = "Save single frames", variable=self.var_Dark_saveall, value=1)
+        r1_Dark_saveall.place(x=160, y=38)
 
         label_Dark_MasterFile =  tk.Label(labelframe_Dark, text="Master Dark File:")
         label_Dark_MasterFile.place(x=4,y=70)
@@ -403,7 +442,7 @@ class SAMOS_Main(object):
         entry_Dark_MasterFile.place(x=120, y=68)
 
         button_ExpStart=  tk.Button(labelframe_Dark, text="START", bd=3, bg='#0052cc',font=("Arial", 24),
-                                          command=self.expose)
+                                          command=self.expose_dark)
         button_ExpStart.place(x=75,y=95)
 
 # =============================================================================
@@ -427,9 +466,9 @@ class SAMOS_Main(object):
         entry_Flat_NofFrames.place(x=100, y=38)
         
         
-        var_Flat_saveall = tk.IntVar()
-        r1_Flat_saveall = tk.Radiobutton(labelframe_Flat, text = "Save single frames", variable=var_Flat_saveall, value=1)
-        r1_Flat_saveall.place(x=150, y=38)
+        self.var_Flat_saveall = tk.IntVar()
+        r1_Flat_saveall = tk.Radiobutton(labelframe_Flat, text = "Save single frames", variable=self.var_Flat_saveall, value=1)
+        r1_Flat_saveall.place(x=160, y=38)
 
         label_Flat_MasterFile =  tk.Label(labelframe_Flat, text="Master Flat File:")
         label_Flat_MasterFile.place(x=4,y=70)
@@ -438,29 +477,20 @@ class SAMOS_Main(object):
         entry_Flat_MasterFile.place(x=120, y=68)
 
         button_ExpStart=  tk.Button(labelframe_Flat, text="START", bd=3, bg='#0052cc',font=("Arial", 24),
-                                          command=self.expose)
+                                          command=self.expose_flat)
         button_ExpStart.place(x=75,y=95)
 
 
 
-        label_Display =  tk.Label(labelframe_Acquire, text="Subtract for Display:")
-        label_Display.place(x=4,y=120)
-        subtract_Bias = tk.IntVar()
-        check_Bias = tk.Checkbutton(labelframe_Acquire, text='Bias',variable=subtract_Bias, onvalue=1, offvalue=0)
-        check_Bias.place(x=4, y=140)
-        subtract_Dark = tk.IntVar()
-        check_Dark = tk.Checkbutton(labelframe_Acquire, text='Dark',variable=subtract_Dark, onvalue=1, offvalue=0)
-        check_Dark.place(x=60,y=140)
-        subtract_Flat = tk.IntVar()
-        check_Flat = tk.Checkbutton(labelframe_Acquire, text='Flat',variable=subtract_Flat, onvalue=1, offvalue=0)
-        check_Flat.place(x=120,y=140)
+        
+        
 # =============================================================================
 #         
-#  #    FITS file
+#  #    FITS manager
 #         
 # =============================================================================
         self.frame_FITSmanager = tk.Frame(root,background="pink")#, width=400, height=800)
-        self.frame_FITSmanager.place(x=0, y=450, anchor="nw", width=220, height=200)
+        self.frame_FITSmanager.place(x=0, y=500, anchor="nw", width=220, height=250)
 
         labelframe_FITSmanager =  tk.LabelFrame(self.frame_FITSmanager, text="FITS manager", font=("Arial", 24))
         labelframe_FITSmanager.pack(fill="both", expand="yes")
@@ -516,36 +546,16 @@ class SAMOS_Main(object):
         button_show_slits.place(x=0,y=140)
 
 # =============================================================================
-
+#
+# GINGA DISPLAY
+#
+# =============================================================================
 
         vbox = tk.Frame(root, relief=tk.RAISED, borderwidth=1)
 #        vbox.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
         vbox.pack(side=tk.TOP)
-        vbox.place(x=230, y=0, anchor="nw")#, width=500, height=800)
-        self.vb = vbox
-# =============================================================================
-# #
-# # Menu Bar goes into the mac header...
-# #
-# =============================================================================
-        menubar = tk.Menu(root)
-        filemenu = tk.Menu(menubar, tearoff=0)
-        filemenu.add_command(label="Motors Setup", command=self.load_Motors_module_GUI)
-        filemenu.add_command(label="DMD Setup", command=self.load_DMD_module_GUI)
-        filemenu.add_command(label="SOAR comm Setup", command=self.load_SOAR_module_GUI)
-        filemenu.add_command(label="CCD Acquisition", command=self.load_CCD_module_GUI)
-        filemenu.add_command(label="Astrometry", command=self.load_Astrometry)
-#        filemenu.add_command(label="Config", command=self.CONFIG_GUI)
-        filemenu.add_separator()
-        filemenu.add_command(label="Exit", command=root.quit)
-        menubar.add_cascade(label="File", menu=filemenu)
-        root.config(menu=menubar)
-        
-        helpmenu = tk.Menu(menubar, tearoff=0)
-        helpmenu.add_command(label="Help Index", command=self.donothing)
-        helpmenu.add_command(label="About...", command=self.donothing)
-        menubar.add_cascade(label="Help", menu=helpmenu)
-        root.config(menu=menubar)                
+        vbox.place(x=350, y=0, anchor="nw")#, width=500, height=800)
+        #self.vb = vbox
 
         canvas = tk.Canvas(vbox, bg="grey", height=514, width=522)
         canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
@@ -738,14 +748,188 @@ class SAMOS_Main(object):
             out_f.write(buf)
 
 # =============================================================================
+# # Expose_light
+# 
+# =============================================================================
+    def expose_light(self):
+        self.image_type = "science"
+        ExpTime_ms = float(self.Light_ExpT.get())*1000
+        params = {'Exposure Time':ExpTime_ms,'CCD Temperature':2300, 'Trigger Mode': 4, 'NofFrames': 1}
+        self.expose(params)
+#        self.combine_files()
+        self.handle_light()
+        print("science file created")
+
+# =============================================================================
+# # Expose_bias
+# 
+# =============================================================================
+    def expose_bias(self):
+        self.image_type = "bias"
+        ExpTime_ms = float(self.Bias_ExpT.get())*1000
+        params = {'Exposure Time':ExpTime_ms,'CCD Temperature':2300, 'Trigger Mode': 5, 'NofFrames': int(self.Bias_NofFrames.get())}
+        #cleanup the directory to remove setimage_ files that may be refreshed
+        self.cleanup_files()
+        self.expose(params)
+        self.combine_files()
+        print("Superbias file created")
+        
+                       
+# =============================================================================
+# # Expose_dark
+# 
+# =============================================================================
+    def expose_dark(self):
+        self.image_type = "dark"
+        ExpTime_ms = float(self.Dark_ExpT.get())*1000
+        params = {'Exposure Time':ExpTime_ms,'CCD Temperature':2300, 'Trigger Mode': 5, 'NofFrames': int(self.Dark_NofFrames.get())}
+        self.expose(params)
+        self.combine_files()
+        self.handle_dark()
+        print("Superdark file created")
+
+
+# =============================================================================
+# # Expose_flat
+# 
+# =============================================================================
+    def expose_flat(self):
+        self.image_type = "flat"
+        ExpTime_ms = float(self.Flat_ExpT.get())*1000
+        params = {'Exposure Time':ExpTime_ms,'CCD Temperature':2300, 'Trigger Mode': 4, 'NofFrames': int(self.Flat_NofFrames.get())}
+        self.expose(params)
+        self.combine_files()
+        self.handle_flat()
+        print("Superflat file created")
+        #Camera= CCD(dict_params=params)
+
+# =============================================================================
+# # Handle files: sets or single?
+# 
+# =============================================================================
+    def combine_files(self):
+        #this procedure runs after the CCD.expose()
+        #to handle the decision of saving all single files or just the averages
+        file_names = local_dir+"/fits_image/setimage_*.fit"
+        files = glob.glob(file_names)
+        superfile_cube = np.zeros((1032,1056,len(files)))   #note y,x,z
+        for i in range(len(files)):
+            print(files[i])
+            with fits.open(files[i]) as hdu:
+                superfile_cube[:,:,i] = hdu[0].data
+                if self.var_Bias_saveall.get() == 1 or \
+                   self.var_Dark_saveall.get() == 1 or \
+                   self.var_Flat_saveall.get() == 1:
+                   #save every single frame
+                    os.rename(files[i],local_dir+"/fits_image/"+self.image_type+"_"+str(i)+".fits")
+                else: 
+                    os.remove(files[i])
+        superfile = superfile_cube.mean(axis=2)        
+        superfile_header = hdu[0].header
+        fits.writeto(local_dir+"/fits_image/super"+self.image_type+".fits",superfile,superfile_header,overwrite=True)
+            
+    def cleanup_files(self):
+        file_names = local_dir+"/fits_image/"+self.image_type+"_*.fits"
+        files = glob.glob(file_names)
+        for i in range(len(files)):
+             os.remove(files[i])
+        
+    def handle_dark(self):
+        dark_file = local_dir+"/fits_image/superdark.fits"
+        bias_file = local_dir+"/fits_image/superbias.fits"
+        hdu_dark = fits.open(dark_file)
+        dark = hdu_dark[0].data
+        hdu_bias = fits.open(bias_file)
+        bias = hdu_bias[0].data
+        
+        if self.subtract_Bias.get() == 1:
+            dark_bias = dark-bias
+        else:    
+            dark_bias = dark
+        
+        hdr = hdu_dark[0].header
+        exptime = hdr['PARAM2']
+        dark_sec = dark_bias / exptime
+        hdr_out = hdr
+        hdr_out['PARAM2']=1
+        fits.writeto(local_dir+"/fits_image/superdark_s.fits",dark_sec,hdr_out,overwrite=True)
+
+    def handle_flat(self):
+        flat_file = local_dir+"/fits_image/superflat.fits"
+        dark_s_file = local_dir+"/fits_image/superdark_s.fits"
+        bias_file = local_dir+"/fits_image/superbias.fits"
+        hdu_flat = fits.open(flat_file)
+        flat = hdu_flat[0].data
+        hdu_bias = fits.open(bias_file)
+        bias = hdu_bias[0].data
+        if self.subtract_Bias.get() == 1:
+            flat_bias = flat-bias
+        else:    
+            flat_bias = flat
+
+        hdr = hdu_flat[0].header
+        exptime = hdr['PARAM2']
+        hdu_dark_s = fits.open(dark_s_file)
+        dark_s = hdu_dark_s[0].data
+        dark = dark_s * exptime
+        if self.subtract_Dark.get() == 1:
+            flat_dark = flat-dark
+            flat_dark = flat - dark
+        else:    
+            flat_dark = flat
+        flat_norm = flat_dark / np.median(flat_dark)
+        fits.writeto(local_dir+"/fits_image/superflat_norm.fits",flat_norm,hdr,overwrite=True)
+        
+    def handle_light(self):
+        light_file = local_dir+"/fits_image/newimage.fit"
+        flat_file = local_dir+"/fits_image/superflat_norm.fits"
+        dark_s_file = local_dir+"/fits_image/superdark_s.fits"
+        bias_file = local_dir+"/fits_image/superbias.fits"
+        
+        hdu_light = fits.open(light_file)
+        light = hdu_light[0].data
+        
+        hdu_bias = fits.open(bias_file)
+        bias = hdu_bias[0].data
+        
+        hdu_dark_s = fits.open(dark_s_file)
+        dark_s = hdu_dark_s[0].data
+        
+        hdu_flat = fits.open(flat_file)
+        flat = hdu_flat[0].data
+
+        hdr = hdu_light[0].header
+        exptime = hdr['PARAM2']
+
+        if self.subtract_Bias.get() == 1:
+            light_bias = light-bias
+        else:    
+            light_bias = light
+            
+        if self.subtract_Dark.get() == 1:
+            light_dark = light_bias - dark_s * exptime
+        else:    
+            light_dark = light_bias
+
+        if self.subtract_Flat.get() == 1:
+            light_dark_bias = np.divide(light_dark, flat) 
+        else:    
+            light_dark_bias = light_dark
+        fits_image = local_dir+"/fits_image/newimage_ff.fits"    
+        fits.writeto(fits_image,light_dark_bias,hdr,overwrite=True)
+        self.Display(fits_image)
+       
+
+# =============================================================================
 # # Expose
 # 
 # =============================================================================
 
-    def expose(self):
+    def expose(self,params):
+        
         #Prepare the exposure parameers
-        ExpTime_ms = float(self.ExpTime.get())*1000
-        params = {'Exposure Time':ExpTime_ms,'CCD Temperature':2300, 'Trigger Mode': 4}
+        #ExpTime_ms = float(self.ExpTime.get())*1000
+        #params = {'Exposure Time':ExpTime_ms,'CCD Temperature':2300, 'Trigger Mode': 4}
         Camera= CCD(dict_params=params)
         
         self.this_param_file = open("{}/Parameters.txt".format(os.getcwd()),"w")
@@ -754,31 +938,33 @@ class SAMOS_Main(object):
         self.this_param_file.close()
         #Expose
         data = Camera.expose()
+        
         #Fix the fit header from U16 to I16, creating a new image
         #create proper working directory
         work_dir = os.getcwd()
 
         ##fits_image = "/Users/robberto/Box/@Massimo/_Python/SAMOS_GUI_dev/fits_image/newimage_fixed.fit"
         #fits_image = "{}/fits_image/newimage_fixed.fit".format(work_dir)
-        fits_image = "{}/fits_image/newimage.fit".format(work_dir)
+        self.fits_image = "{}/fits_image/newimage.fit".format(work_dir)
         
         ##fits_image_converted = "/Users/robberto/Box/@Massimo/_Python/SAMOS_GUI_dev/fits_image/newimage_fixed.fit"             		
-        fits_image_converted = "{}/fits_image/newimage_fixed.fit".format(work_dir)         		
+#        fits_image_converted = "{}/fits_image/newimage_fixed.fit".format(work_dir)         		
         
-        self.convertSIlly(fits_image,fits_image_converted)
+#        self.convertSIlly(fits_image,fits_image_converted)
         #To do: cancel the original image.= If the canera is active; otherwise leave it.
         #Hence, we need a general switch to activate if the camera is running.
         #Hence, we may need a general login window.
+        self.Display(self.fits_image)
 
-        #Display
-        image = load_data(fits_image_converted, logger=self.logger)
-        #image = load_data(fits_image, logger=self.logger)
+    def Display(self,imagefile): 
+#        image = load_data(fits_image_converted, logger=self.logger)
+        image = load_data(imagefile, logger=self.logger)
             # AstroImage object of ginga.AstroImage module
         
         self.AstroImage = image    #make the AstroImage available
         self.fitsimage.set_image(image)
             # passes the image to the viewer through the set_image() method
-        self.root.title(self.fullpath_FITSfilename)
+        #self.root.title(self.fullpath_FITSfilename)
         
         
 
@@ -900,7 +1086,7 @@ class SAMOS_Main(object):
 
 ######
     def load_DMD_module_GUI(self):
-        DMD()       
+        GUI_DMD()       
         pass
 
 ######

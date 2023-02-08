@@ -26,7 +26,10 @@ local_dir = str(path.absolute())
 parent_dir = str(path.parent)   
 sys.path.append(parent_dir)
 
-
+# =============================================================================
+# Import classes
+# 
+# =============================================================================
 from  SAMOS_MOTORS_dev.Class_PCM import Class_PCM 
 PCM = Class_PCM()
 
@@ -34,7 +37,7 @@ PCM = Class_PCM()
 from  SAMOS_CCD_dev.Class_CCD import Class_Camera
 params = {'Exposure Time':0,'CCD Temperature':2300,'Trigger Mode': 4}
         #Trigger Mode = 4: light
-        #Trigger Mode = 4: dark
+        #Trigger Mode = 5: dark
 CCD = Class_Camera(dict_params=params)
 
 #Import the DMD class
@@ -43,23 +46,7 @@ dmd = DigitalMicroMirrorDevice()#config_id='pass')
 
 
 
-# this will make your package available on your pythonpath
 # =============================================================================
-#from parent_dir.SAMOS_MOTORS_dev.Class_PCM import Class_PCM
-# 
-#  PCM = Class_PCM()
-# 
-#  #print('echo from server:')
-#  #PCM.echo_client()
-# 
-# =============================================================================
-
-#add the path of the other directoris to make the classes visible...
-#1. system file
-#SF_path = str(path.absolute())+"/../system_files"
-#os.sys.path.append(SF_path)
-
-
 #Here, we are creating our class, Window, and inheriting from the Frame class. 
 #Frame is a class from the tkinter module. (see Lib/tkinter/__init__)
 
@@ -83,15 +70,7 @@ class Config(tk.Frame):
 #        parent_dir = str(path.parent)      
  
         self.cwd = local_dir       
-        self.parent_dir = parent_dir     
-        
-#    def init_Config(self):
-#       self.init_Config()
-#        self.load_IP_user()
-#        self.load_dir_user()
-#The above is really all we need to do to get a window instance started.
-
-     
+        self.parent_dir = parent_dir        
        
         
     #Creation of init_window
@@ -212,10 +191,10 @@ class Config(tk.Frame):
         
 
         self.inoutvar=tk.StringVar()
-        self.inoutvar.set("B")
-        r1 = tk.Radiobutton(self.labelframe_Servers, text='Inside', variable=self.inoutvar, value='A', command=self.load_IP_default)
+        self.inoutvar.set("outside")
+        r1 = tk.Radiobutton(self.labelframe_Servers, text='Inside', variable=self.inoutvar, value='inside', command=self.load_IP_default)
         r1.place(x=20,y=0)
-        r2 = tk.Radiobutton(self.labelframe_Servers, text='Outside', variable=self.inoutvar, value='B', command=self.load_IP_default)
+        r2 = tk.Radiobutton(self.labelframe_Servers, text='Outside', variable=self.inoutvar, value='outside', command=self.load_IP_default)
         r2.place(x=150,y=0)
 
 # 1. Server addresses
@@ -315,7 +294,6 @@ class Config(tk.Frame):
         Exit_Button = tk.Button(self.Exit_frame, text ="Exit", relief="raised", command = self.client_exit, font=("Arial",24)) 
         Exit_Button.place(x=230, y=5)
 
- 
 # =============================================================================
 # =============================================================================
 #         
@@ -323,9 +301,6 @@ class Config(tk.Frame):
 #         
 # =============================================================================
 # =============================================================================
-
-  
-
 
     def load_dir_default(self):
         dict_from_csv = {}
@@ -413,7 +388,7 @@ class Config(tk.Frame):
 
     def load_IP_user(self):
         local_path = self.parent_dir+"/SAMOS_system_dev/"
-        if self.inoutvar.get() == 'A':
+        if self.inoutvar.get() == 'inside':
             ip_file = local_path+"IP_addresses_default_inside.csv"
         else:
             ip_file = local_path+"IP_addresses_default_outside.csv"
@@ -456,7 +431,7 @@ class Config(tk.Frame):
 # =============================================================================
 # open file for writing, "w" is writing
         local_path = self.parent_dir+"/SAMOS_system_dev/"
-        if self.inoutvar.get() == 'A':
+        if self.inoutvar.get() == 'inside':
             ip_file = local_path+"IP_addresses_default_inside.csv"
         else:
             ip_file = local_path+"IP_addresses_default_outside.csv"
@@ -477,16 +452,16 @@ class Config(tk.Frame):
         
         
     def load_IP_default(self):
-        dict_from_csv = {}
+        
         local_path = self.parent_dir+"/SAMOS_system_dev/"
-        if self.inoutvar.get() == 'A':
+        if self.inoutvar.get() == 'inside':
             ip_file = local_path+"IP_addresses_default_inside.csv"
         else:
             ip_file = local_path+"IP_addresses_default_outside.csv"
         ip_file_default = local_path + "IP_addresses_default.csv"    
         os.system('cp {} {}'.format(ip_file,ip_file_default))  
 
-        
+        dict_from_csv = {}      
         with open(ip_file, mode='r') as inp:
             reader = csv.reader(inp)
             dict_from_csv = {rows[0]:rows[1] for rows in reader}
@@ -521,37 +496,45 @@ class Config(tk.Frame):
 
     def IP_echo(self):                   
 #MOTORS alive?
+        print("\n Checking Motors status")
         answer = PCM.echo_client()
-        print("\n Motors return:>", answer,"<")
+        #print("\n Motors return:>", answer,"<")
         if answer != 0:
+            print("Motors are on")
             self.IP_Motors_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_Motors'] = True   
         else:
-           self.IP_Motors_on_button.config(image = self.Image_off)
-           self.IP_status_dict['IP_Motors'] = False    
+            print("Motors are off")
+            self.IP_Motors_on_button.config(image = self.Image_off)
+            self.IP_status_dict['IP_Motors'] = False    
                     
 
 #CCD alive?
+        print("\n Checking CCD status")
         url_name = "http://"+self.IP_dict['IP_CCD']+'/'
         answer = (CCD.get_url_as_string(url_name))[:6]   #expect <HTML>
-        print("\nCCD returns:>", answer,"<")
+        print("CCD returns:>", answer,"<")
         if str(answer) == '<HTML>':
+            print("CCD is on")
             self.CCD_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_CCD'] = True   
         else:
+            print("CCD is off")
             self.CCD_on_button.config(image = self.Image_off)
             self.IP_status_dict['IP_CCD'] = False  
             
 #DMD alive?
-        
+        print("\n Checking DMD status")
         dmd.initialize()
         answer = dmd._open()
         if answer != 0:
+            print("\n DMD is on")
             self.DMD_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_DMD'] = True   
         else:
-           self.DMD_on_button.config(image = self.Image_off)
-           self.IP_status_dict['IP_DMD'] = False    
+            print("\n DMD is off")
+            self.DMD_on_button.config(image = self.Image_off)
+            self.IP_status_dict['IP_DMD'] = False    
 
 
         self.save_IP_status()    
@@ -563,9 +546,14 @@ class Config(tk.Frame):
         if self.IP_status_dict['IP_Motors']:
             self.IP_Motors_on_button.config(image = self.Image_off)
             self.IP_status_dict['IP_Motors'] = False
+            PCM.power_off()
         else:           
             self.IP_Motors_on_button.config(image = self.Image_on)
-            self.IP_status_dict['IP_Motors'] = True            
+            self.IP_status_dict['IP_Motors'] = True
+#            SF.read_IP_initial_status()
+            self.save_IP_status()
+            PCM.IP_host = self.IP_Motors
+            PCM.power_on()
         self.save_IP_status()    
         print(self.IP_status_dict)        
     
@@ -578,6 +566,7 @@ class Config(tk.Frame):
             self.CCD_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_CCD'] = True        
         self.save_IP_status()    
+        print(self.IP_status_dict)        
     
 
     def DMD_switch(self):         
@@ -589,6 +578,7 @@ class Config(tk.Frame):
             self.DMD_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_DMD'] = True          
         self.save_IP_status()    
+        print(self.IP_status_dict)        
     
     def SOAR_switch(self):         
         # Determine is on or off
@@ -599,6 +589,7 @@ class Config(tk.Frame):
             self.SOAR_Tel_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_SOAR']= True            
         self.save_IP_status()    
+        print(self.IP_status_dict)        
 
     def SAMI_switch(self):         
         # Determine is on or off
@@ -609,6 +600,7 @@ class Config(tk.Frame):
             self.SOAR_SAMI_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_SAMI'] = True    
         self.save_IP_status()    
+        print(self.IP_status_dict)        
     
 
 # =============================================================================
@@ -625,7 +617,7 @@ class Config(tk.Frame):
 # 
 # =============================================================================
     def client_exit(self):
-        print("destroy")
+        print("complete")
         self.master.destroy() 
        
 

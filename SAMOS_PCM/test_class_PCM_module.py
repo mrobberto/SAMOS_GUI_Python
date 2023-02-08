@@ -21,7 +21,7 @@ PCM.echo_client()
 #PCM._close()
 # 
 #print('\nall ports status:')
-PCM.all_ports_status()
+#PCM.all_ports_status()
 # 
 # print('\n intitalize:')
 #PCM.initialize_filter_wheel("FW1")

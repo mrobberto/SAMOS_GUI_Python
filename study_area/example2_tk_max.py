@@ -302,7 +302,7 @@ class FitsViewer(object):
            astropy_region=ap_region.ginga_canvas_object_to_astropy_region(self.canvas.objects[i_obj])
            print(astropy_region) 
            
-        #create a list of nastropy regions, so we export a .reg file
+        #create a list of astropy regions, so we export a .reg file
         #first put the initial region in square brackets, argument of Regions to initiate the list
         RRR=Regions([ap_region.ginga_canvas_object_to_astropy_region(self.canvas.objects[0])])
         #then append to the list adding all other regions
@@ -317,6 +317,12 @@ class FitsViewer(object):
         #reading back the ds9 regions in ginga
         pyregions = Regions.read('/Users/SAMOS_dev/Desktop/new_regions.reg', format='ds9')
         n_regions = len(pyregions)
+        for i in range(n_regions):
+            pyregion = pyregions[i]
+            pyregion.width=100
+            gyregion = ap_region.astropy_region_to_ginga_canvas_object(pyregion)
+            ap_region.add_region(self.canvas,pyregion)
+        """"
         regionlist = [dict() for x in range(n_regions)]
         self.canvas.set_drawtype("box",color="green",fillalpha=0.3,fill=True)
         for i in range(n_regions):
@@ -325,6 +331,7 @@ class FitsViewer(object):
             h.width=40
             h.height=60
             self.canvas.add(h)
+        """
         print("boh...?")            
         
             

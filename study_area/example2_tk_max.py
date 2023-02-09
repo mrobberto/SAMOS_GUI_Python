@@ -289,7 +289,7 @@ class FitsViewer(object):
         print(r_all)
         
         from ginga.util import ap_region
-        import pyregion
+        #import pyregion
         from regions import Regions
         # region = 'fk5;circle(290.96388,14.019167,843.31194")'
         # astropy_region = pyregion.parse(region)
@@ -298,7 +298,7 @@ class FitsViewer(object):
          
         #List all regions that we have created
         n_objects = len(self.canvas.objects)
-        for i_obj in range(len(self.canvas.objects)):
+        for i_obj in range(n_objects):
            astropy_region=ap_region.ginga_canvas_object_to_astropy_region(self.canvas.objects[i_obj])
            print(astropy_region) 
            
@@ -320,19 +320,9 @@ class FitsViewer(object):
         for i in range(n_regions):
             pyregion = pyregions[i]
             pyregion.width=100
-            gyregion = ap_region.astropy_region_to_ginga_canvas_object(pyregion)
             ap_region.add_region(self.canvas,pyregion)
-        """"
-        regionlist = [dict() for x in range(n_regions)]
-        self.canvas.set_drawtype("box",color="green",fillalpha=0.3,fill=True)
-        for i in range(n_regions):
-            regionlist[i] = ap_region.astropy_region_to_ginga_canvas_object(pyregions[i])
-            h=regionlist[i]
-            h.width=40
-            h.height=60
-            self.canvas.add(h)
-        """
-        print("boh...?")            
+
+        print("yay!")            
         
             
 

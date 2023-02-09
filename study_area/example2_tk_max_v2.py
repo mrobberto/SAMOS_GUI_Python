@@ -6,7 +6,7 @@
 # Please see the file LICENSE.txt for details.
 #
 import sys
-sys.path.append('/opt/anaconda3/envs/samos_env/bin')
+sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
 
 
 from ginga.tkw.ImageViewTk import CanvasView
@@ -295,8 +295,32 @@ class FitsViewer(object):
         r_all = self.canvas.objects[:]
         print(r_all)
         
+        #r_all is a CompountMixing object, see class ginga.canvas.CompoundMixin.CompoundMixin
+        #check:
+        from ginga.canvas import CompoundMixin as CM
+        CM.CompoundMixin.is_compound(self.canvas.objects)     # True
+        
+        #we can find out what are the "points" objects
+        points = CM.CompoundMixin.get_objects_by_kind(self.canvas,'point')
+        print(list(points))
+        
+        """
+        #we can remove what we don't like, e.g. points
+        points = CM.CompoundMixin.get_objects_by_kind(self.canvas,'point')
+        list_point=list(points)
+        CM.CompoundMixin.delete_objects(self.canvas,list_point)
+        self.canvas.objects   #check that the points are gone
+        """
+        
+        #we can remove both points and boxes
+        points = CM.CompoundMixin.get_objects_by_kinds(self.canvas,['point','box'])
+        list_points=list(points)
+        CM.CompoundMixin.delete_objects(self.canvas,list_points)
+        self.canvas.objects   #check that the points are gone
+        
+        
         from ginga.util import ap_region
-        import pyregion
+
         from regions import Regions
         # region = 'fk5;circle(290.96388,14.019167,843.31194")'
         # astropy_region = pyregion.parse(region)
@@ -305,22 +329,32 @@ class FitsViewer(object):
          
         #List all regions that we have created
         n_objects = len(self.canvas.objects)
-        for i_obj in range(len(self.canvas.objects)):
+        for i_obj in range(n_objects):
            astropy_region=ap_region.ginga_canvas_object_to_astropy_region(self.canvas.objects[i_obj])
            print(astropy_region) 
            
-        #create a list of nastropy regions, so we export a .reg file
+        #create a list of astropy regions, so we export a .reg file
         #first put the initial region in square brackets, argument of Regions to initiate the list
         RRR=Regions([ap_region.ginga_canvas_object_to_astropy_region(self.canvas.objects[0])])
         #then append to the list adding all other regions
         for i_obj in range(1,len(self.canvas.objects)):
            RRR.append(ap_region.ginga_canvas_object_to_astropy_region(self.canvas.objects[i_obj]))
            print(RRR) 
-              
+ 
         #write the regions to file
         #this does not seem to work...
-        #RRR.write('/Users/robberto/Desktop/new_regions.reg', format='ds9')
-           
+        RRR.write('/Users/SAMOS_dev/Desktop/new_regions.reg', format='ds9',overwrite=True)
+       
+        #reading back the ds9 regions in ginga
+        pyregions = Regions.read('/Users/SAMOS_dev/Desktop/new_regions.reg', format='ds9')
+        n_regions = len(pyregions)
+        for i in range(n_regions):
+            pyregion = pyregions[i]
+            pyregion.width=100
+            ap_region.add_region(self.canvas,pyregion)
+
+        print("yay!")            
+       
             
 
     def cursor_cb(self, viewer, button, data_x, data_y):

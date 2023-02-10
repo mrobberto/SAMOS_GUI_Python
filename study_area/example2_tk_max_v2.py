@@ -295,7 +295,11 @@ class FitsViewer(object):
         r_all = self.canvas.objects[:]
         print(r_all)
         
-        #r_all is a CompountMixing object, see class ginga.canvas.CompoundMixin.CompoundMixin
+        """
+        EXERCISE COMPOUNDMIXING CLASS
+        r_all is a CompountMixing object, see class ginga.canvas.CompoundMixin.CompoundMixin
+         https://ginga.readthedocs.io/en/stable/_modules/ginga/canvas/CompoundMixin.html#CompoundMixin.get_objects_by_kinds        
+        """
         #check:
         from ginga.canvas import CompoundMixin as CM
         CM.CompoundMixin.is_compound(self.canvas.objects)     # True
@@ -304,7 +308,6 @@ class FitsViewer(object):
         points = CM.CompoundMixin.get_objects_by_kind(self.canvas,'point')
         print(list(points))
         
-        """
         #we can remove what we don't like, e.g. points
         points = CM.CompoundMixin.get_objects_by_kind(self.canvas,'point')
         list_point=list(points)
@@ -317,10 +320,20 @@ class FitsViewer(object):
         list_points=list(points)
         CM.CompoundMixin.delete_objects(self.canvas,list_points)
         self.canvas.objects   #check that the points are gone
+        """
+        #drawing an object can be done rather easily
+        #first take an object fromt the list and change something
+        objects=CM.CompoundMixin.get_objects(self.canvas)
+        o0=objects[0]
+        o0.y1=40
+        o0.height=100
+        o0.width=70
+        o0.color='lightblue'
+        CM.CompoundMixin.draw(self.canvas,self.canvas.viewer)
         
+        """END OF THE COMPOUNDMIXING EXCERCISE"""
         
         from ginga.util import ap_region
-
         from regions import Regions
         # region = 'fk5;circle(290.96388,14.019167,843.31194")'
         # astropy_region = pyregion.parse(region)
@@ -350,7 +363,8 @@ class FitsViewer(object):
         n_regions = len(pyregions)
         for i in range(n_regions):
             pyregion = pyregions[i]
-            pyregion.width=100
+            pyregion.width=7
+            pyregion.width=3
             ap_region.add_region(self.canvas,pyregion)
 
         print("yay!")            

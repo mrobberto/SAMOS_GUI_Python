@@ -10,7 +10,8 @@ import os
 import threading
 
 
-from ginga.tkw.ImageViewTk import ImageViewCanvas
+from ginga.tkw.ImageViewTk import CanvasView
+from ginga.canvas.CanvasObject import get_canvas_types
 from ginga.misc import log
 from ginga.util.loader import load_data
 
@@ -94,7 +95,7 @@ class SAMOS_Main(object):
         self.extra_header_params = 0
         self.header_entry_string = '' #keep string of entries to write to a file after acquisition.
         
-        
+        self.canvas_types = get_canvas_types()
 # =============================================================================
 #         
 #  #    FILTER STATUS Label Frame
@@ -367,7 +368,7 @@ class SAMOS_Main(object):
         canvas = tk.Canvas(vbox, bg="grey", height=514, width=522)
         canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
-        fi = ImageViewCanvas(logger) #=> ImageViewTk -- a backend for Ginga using a Tk canvas widget
+        fi = CanvasView(logger) #=> ImageViewTk -- a backend for Ginga using a Tk canvas widget
         fi.set_widget(canvas)  #=> Call this method with the Tkinter canvas that will be used for the display.
         #fi.set_redraw_lag(0.0)
         fi.enable_autocuts('on')
@@ -386,15 +387,16 @@ class SAMOS_Main(object):
         bd.enable_all(True)
 
         # canvas that we will draw on
-        DrawingCanvas = fi.getDrawClass('drawingcanvas')
-        canvas2 = DrawingCanvas()
+        
+        #DrawingCanvas = fi.getDrawClass('drawingcanvas')
+        canvas2 = self.canvas_types.DrawingCanvas()
         canvas2.enable_draw(True)
         #canvas.enable_edit(True)
         canvas2.set_drawtype('rectangle', color='blue')
         canvas2.set_surface(fi)
         self.canvas2 = canvas2
         # add canvas to view
-        fi.add(canvas2)
+        fi.get_canvas().add(canvas2)
         canvas2.ui_set_active(True)
 
 
@@ -407,7 +409,7 @@ class SAMOS_Main(object):
         self.readout = tk.Label(root, text='')
         self.readout.pack(side=tk.BOTTOM, fill=tk.X, expand=0)
 
-        self.drawtypes = fi.get_drawtypes()
+        self.drawtypes = canvas2.get_drawtypes()
         ## wdrawtype = ttk.Combobox(root, values=self.drawtypes,
         ##                          command=self.set_drawparams)
         ## index = self.drawtypes.index('ruler')

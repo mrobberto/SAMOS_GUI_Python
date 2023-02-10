@@ -59,7 +59,7 @@ import os
 
 #sys.path.insert(0,"/Users/danakoeppe/allSAMOS/SI_camera_tests/PIX_to_DMD_mapping")
 #print(sys.path)
-#import Coord_Transform_Helpers as CTH
+import Coord_Transform_Helpers as CTH
 
 
 from photutils.aperture import CircularAperture, EllipticalAperture

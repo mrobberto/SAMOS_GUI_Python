@@ -6,7 +6,7 @@
 # Please see the file LICENSE.txt for details.
 #
 import sys
-sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
+#sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
 
 
 from ginga.tkw.ImageViewTk import CanvasView
@@ -299,7 +299,7 @@ class FitsViewer(object):
         EXERCISE COMPOUNDMIXING CLASS
         r_all is a CompountMixing object, see class ginga.canvas.CompoundMixin.CompoundMixin
          https://ginga.readthedocs.io/en/stable/_modules/ginga/canvas/CompoundMixin.html#CompoundMixin.get_objects_by_kinds        
-        """
+       
         #check:
         from ginga.canvas import CompoundMixin as CM
         CM.CompoundMixin.is_compound(self.canvas.objects)     # True
@@ -313,14 +313,14 @@ class FitsViewer(object):
         list_point=list(points)
         CM.CompoundMixin.delete_objects(self.canvas,list_point)
         self.canvas.objects   #check that the points are gone
-        """
+     
         
         #we can remove both points and boxes
         points = CM.CompoundMixin.get_objects_by_kinds(self.canvas,['point','box'])
         list_points=list(points)
         CM.CompoundMixin.delete_objects(self.canvas,list_points)
         self.canvas.objects   #check that the points are gone
-        """
+       
         #drawing an object can be done rather easily
         #first take an object fromt the list and change something
         objects=CM.CompoundMixin.get_objects(self.canvas)
@@ -331,7 +331,8 @@ class FitsViewer(object):
         o0.color='lightblue'
         CM.CompoundMixin.draw(self.canvas,self.canvas.viewer)
         
-        """END OF THE COMPOUNDMIXING EXCERCISE"""
+        END OF THE COMPOUNDMIXING EXCERCISE
+        """
         
         from ginga.util import ap_region
         from regions import Regions

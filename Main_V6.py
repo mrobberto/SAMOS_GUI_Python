@@ -1282,7 +1282,7 @@ if __name__ == "__main__":
     elif options.profile:
         import profile
 
-        print("%s profile:" % sys.argv[0])
+       # print("%s profile:" % sys.argv[0])
         profile.run('main(options, args)')
 
     else:

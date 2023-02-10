@@ -7,7 +7,9 @@ Created on Thu Dec 30 10:49:37 2021
 """
 import tkinter as tk
 from tkinter import ttk
-
+import os
+cwd = os.getcwd()
+print(cwd)
 
 class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel widget
     def __init__(self, master=None):  #__init__ constructor method. 
@@ -38,13 +40,13 @@ class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel
 
 # =============================================================================
 #         
-#  #    ACQUIRE IMAGE Label Frame
+#  #    ACQUIRE IMAGE Frame
 #         
 # =============================================================================
-        self.frame2l = tk.Frame(self.frame0l,background="cyan")#, width=400, height=800)
+        self.frame2l = tk.Frame(self.frame0l,background="dark turquoise")#, width=400, height=800)
         self.frame2l.place(x=4, y=4, anchor="nw", width=420, height=400)
-
-         
+        
+        
   
   
 #        root = tk.Tk()
@@ -218,6 +220,79 @@ class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel
         subtract_Flat = tk.IntVar()
         check_Flat = tk.Checkbutton(labelframe_Acquire, text='Flat',variable=subtract_Flat, onvalue=1, offvalue=0)
         check_Flat.place(x=120,y=140)
+
+
+# =============================================================================
+#      CCD Setup panel
+# 
+# =============================================================================
+
+        self.frame2r = tk.Frame(self.frame0l,background="#4A7A8C")#, width=400, height=800)
+        self.frame2r.place(x=430, y=4, anchor="nw", width=360, height=400)
+        labelframe_Setup =  tk.LabelFrame(self.frame2r, text="Camera Seup", font=("Arial", 24))
+        labelframe_Setup.pack(fill="both", expand="yes")
+        
+        #camera_is_open = tk.IntVar()
+        button_open_camera= tk.Button(labelframe_Setup, text='Open Camera')
+                                                        #command = open_close_camera)
+        button_open_camera.place(x=4, y=104)
+        
+        button_cooler_on= tk.Button(labelframe_Setup, text='Cooler on')
+                                                        #command = open_close_camera)
+        button_cooler_on.place(x=4, y=124)
+        
+        
+        # Create Label
+        self.camera_is_on = False
+        self.label_camera_ON = tk.Label(labelframe_Setup,
+                         text = "The Camera is off",
+                         fg = "grey",
+                         font = ("Helvetica", 20))
+        self.label_camera_ON.place(x=4,y=8)
+        
+        # Define Our Images
+        self.on_png = tk.PhotoImage(file = "../tk_utilities/on.png")
+        self.off_png = tk.PhotoImage(file = "../tk_utilities/off.png")
+        self.button_open_camera= tk.Button(labelframe_Setup, image=self.off_png, bd=0, command=self.turn_camera_ON)
+                                                        #command = open_close_camera)
+        self.button_open_camera.place(x=180, y=0)
+
+    def turn_camera_ON(self):
+        #global camera_is_on
+         
+        # Determine is on or off
+        if self.camera_is_on:
+            self.button_open_camera.config(image = self.off_png)
+            self.label_camera_ON.config(text = "The Camera is Off",fg = "grey")
+            self.camera_is_on = False
+        else:
+            self.button_open_camera.config(image = self.on_png)
+            self.label_camera_ON.config(text = "The Camera is On", fg = "green")
+            self.camera_is_on = True
+
+        """ 
+        #        labelframe_Grating.place(x=4, y=10)
+
+        params = {'Exposure Time':100,'CCD Temperature':2300,'Trigger Mode': 4}
+        #Trigger Mode = 4: light
+        #Trigger Mode = 4: dark
+
+        Camera= Class_Camera(dict_params=params)
+
+
+        Camera.expose()
+        #Camera.Cooler("1") 
+
+        #Camera.dict_params['Exposure Time']=10
+
+        #Camera.set_CCD_temp(2030)    #(273-80) * 10
+
+        #Status = Camera.status()
+        #print(Status)
+        #url_name = 'http://128.220.146.254:8900/'
+        """
+ 
+
 
 # =============================================================================
 #      SHOW SIMBAD IMAGE
@@ -674,3 +749,18 @@ class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel
 
         # Save to FITS file
         hdu.writeto('test.fits')
+
+#Root window created. 
+#Here, that would be the only window, but you can later have windows within windows.
+root = GUI_CCD()
+
+#size of the window
+#root.geometry("400x330")
+
+#Then we actually create the instance.
+#app = Tk.Window(root)    
+
+#Finally, show it and begin the mainloop.
+root.mainloop()
+
+

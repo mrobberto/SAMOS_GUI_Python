@@ -86,7 +86,6 @@ def write_DMD_pattern(slit_table, save_pattern=False, pattern_name='pattern.png'
 	j = 0
 	slit_num = 0
 	for i in slit_table.index.values:
-
 		if i==0:
 			print('accepting first target', i)
 			good_index.append(i)
@@ -106,10 +105,10 @@ def write_DMD_pattern(slit_table, save_pattern=False, pattern_name='pattern.png'
 			lower_mirs.append(dmd_y1)
 			
 
-			dx0 = dmd_xc-dmd_x0
-			dy0 = dmd_yc-dmd_y0
-			dx1 = dmd_x1-dmd_xc
-			dy1 = dmd_y1-dmd_yc
+			dx0 = np.abs(dmd_xc-dmd_x0)
+			dy0 = np.abs(dmd_yc-dmd_y0)
+			dx1 = np.abs(dmd_x1-dmd_xc)
+			dy1 = np.abs(dmd_y1-dmd_yc)
 
 			dmd_dx0s.append(dx0)
 			dmd_dy0s.append(dy0)
@@ -138,71 +137,77 @@ def write_DMD_pattern(slit_table, save_pattern=False, pattern_name='pattern.png'
 
 
 			pattern_table = pd.DataFrame(data=pdata, columns=pcols)
-			return pattern_table, redo_index
+			return pattern_table, redo_index, bin_pattern
+
+		if j<len(slit_table):
+			#print(i, j)
+			#continue
+
+			while ((slit_table.iloc[j]['dmd_x0'] > slit_table.iloc[i]['dmd_x1']) & (j<len(slit_table)-1)):
+									### '>' because images from Strasbourg decrease in RA from left to right.
+				print('skipping target', j)
+				#print(target_table.iloc[j]['slit_edges_left'], target_table.iloc[i]['slit_edges_right'])
+				redo_index.append(j)
+				j+=1
+			
+			print('accepting target', j)
+			print('\n')
+			good_index.append(j)
 
 
-		while ((slit_table.iloc[j]['dmd_x0'] > slit_table.iloc[i]['dmd_x1']) & (j<len(slit_table)-1)):
-								### '>' because images from Strasbourg decrease in RA from left to right.
-			print('skipping target', j)
-			#print(target_table.iloc[j]['slit_edges_left'], target_table.iloc[i]['slit_edges_right'])
-			redo_index.append(j)
-			j+=1
+			ra, dec = slit_table.loc[j, ['RA', 'DEC']].values
+			coords0 = SkyCoord(90, 20,unit='deg')
+
+
+			dmd_xc, dmd_yc = slit_table.loc[j, ["dmd_xc", "dmd_yc"]]
+			dmd_x0, dmd_y0 = slit_table.loc[j, ["dmd_x0", "dmd_y0"]]
+			dmd_x1, dmd_y1 = slit_table.loc[j, ["dmd_x1", "dmd_y1"]]
+
+
+			print("append slit {}".format(j))
+			left_mirs.append(dmd_x0)
+			right_mirs.append(dmd_x1)
+			upper_mirs.append(dmd_y0)
+			lower_mirs.append(dmd_y1)
+			
+
+			dx0 = np.abs(dmd_xc-dmd_x0)
+			dy0 = np.abs(dmd_yc-dmd_y0)
+			dx1 = np.abs(dmd_x1-dmd_xc)
+			dy1 = np.abs(dmd_y1-dmd_yc)
+
+			dmd_dx0s.append(dx0)
+			dmd_dy0s.append(dy0)
+			dmd_dx1s.append(dx1)
+			dmd_dy1s.append(dy1)
 		
-		print('accepting target', j)
-		print('\n')
-		good_index.append(j)
+			sl = DMDSlit(ra=ra,dec=dec, xc=dmd_xc, yc=dmd_yc, x0=dmd_x0, x1=dmd_x1, 
+					 y0=dmd_y0, y1=dmd_y1, slit_n=slit_num)
+			
 
-
-		ra, dec = slit_table.loc[j, ['RA', 'DEC']].values
-		coords0 = SkyCoord(90, 20,unit='deg')
-
-
-		dmd_xc, dmd_yc = slit_table.loc[j, ["dmd_xc", "dmd_yc"]]
-		dmd_x0, dmd_y0 = slit_table.loc[j, ["dmd_x0", "dmd_y0"]]
-		dmd_x1, dmd_y1 = slit_table.loc[j, ["dmd_x1", "dmd_y1"]]
-
-
-		print("append slit {}".format(j))
-		left_mirs.append(dmd_x0)
-		right_mirs.append(dmd_x1)
-		upper_mirs.append(dmd_y0)
-		lower_mirs.append(dmd_y1)
-		
-
-		dx0 = dmd_xc-dmd_x0
-		dy0 = dmd_yc-dmd_y0
-		dx1 = dmd_x1-dmd_xc
-		dy1 = dmd_y1-dmd_yc
-
-		dmd_dx0s.append(dx0)
-		dmd_dy0s.append(dy0)
-		dmd_dx1s.append(dx1)
-		dmd_dy1s.append(dy1)
-	
-		sl = DMDSlit(ra=ra,dec=dec, xc=dmd_xc, yc=dmd_yc, x0=dmd_x0, x1=dmd_x1, 
-				 y0=dmd_y0, y1=dmd_y1, slit_n=slit_num)
-		
-
-		dmd_slits.append(sl)
-		slit_num+=1
+			dmd_slits.append(sl)
+			slit_num+=1
 
 
 	pcols = ["target", "ra", "dec", "dmd_xc", "dmd_yc", "dmd_dx0", "dmd_dy0", "dmd_dx1", "dmd_dy1"]
 	pdata = np.vstack((slit_table.loc[good_index, 'object'].values,
 					  slit_table.loc[good_index, 'RA'].values, slit_table.loc[good_index, 'DEC'].values,
-					  slit_table.dmd_xc.values, slit_table.dmd_yc.values, np.array(dmd_dx0s), np.array(dmd_dy0s), 
+					  slit_table.loc[good_index, 'dmd_xc'], slit_table.loc[good_index, 'dmd_yc'], 
+					  np.array(dmd_dx0s), np.array(dmd_dy0s), 
 					  np.array(dmd_dx1s), np.array(dmd_dy1s))).T
 
 
 	pattern_table = pd.DataFrame(data=pdata, columns=pcols)
 
 	#### this line creates the actual png image which can be uploaded to the DMD ###
-	bin_pattern = create_test_shape(pattern_table, save_pattern=save_pattern)
+	bin_pattern = create_DMD_shape(pattern_table, save_pattern=save_pattern, pattern_save_name=pattern_name)
 
 	return pattern_table, redo_index, bin_pattern
 
 from PIL import Image
 def create_DMD_shape(table, save_pattern=False, pattern_save_name='pattern.png',inverted=False):
+
+
 
     xoffset = 0#np.full(len(table.index),int(0))
     yoffset = np.full(len(table.index),int(2048/4))
@@ -219,7 +224,8 @@ def create_DMD_shape(table, save_pattern=False, pattern_save_name='pattern.png',
         for i in table.index:
             dmd_shape[y1[i]:y2[i],x1[i]:x2[i]]=0
     dmd_shape = np.uint8(dmd_shape) #test_shape.astype(np.uint8)
-    
+
+    print(pattern_save_name)
     if save_pattern:
     
         im_pattern = Image.fromarray(dmd_shape)

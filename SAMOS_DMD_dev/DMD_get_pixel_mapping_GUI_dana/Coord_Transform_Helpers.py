@@ -17,7 +17,7 @@ from astropy.nddata import CCDData
 from astropy.visualization import hist
 from astropy.visualization import quantity_support,astropy_mpl_style, simple_norm
 
-from photutils.detection import IRAFStarFinder
+from photutils.detection import IRAFStarFinder, DAOStarFinder
 
 
 plt.rcParams.update({'font.size': 20})

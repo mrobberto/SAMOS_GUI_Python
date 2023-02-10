@@ -77,7 +77,7 @@ sys.path.append(local_dir)
 
 
 import ap_region_massimoshacked as apreg
-from regions import PixCoord, RectanglePixelRegion
+from regions import PixCoord, RectanglePixelRegion, PointPixelRegion, RegionVisual
 
 ccd2dmd_file = "./DMD_Mapping_WCS.fits"
 
@@ -95,7 +95,7 @@ class FitsViewer(QtGui.QMainWindow):
         wcshead = hdul[0].header
         self.ccd2dmd_wcs = WCS(wcshead,relax=True)
         self.wcshead = wcshead
-        self.SlitList = []
+        self.SlitObjectList = []
         self.slit_number = 0
         self.saved_patterns = []
         
@@ -112,7 +112,7 @@ class FitsViewer(QtGui.QMainWindow):
         fi.enable_autozoom('on')
         fi.set_zoom_algorithm('rate')
         fi.set_zoomrate(1.4)
-        fi.show_pan_mark(True)
+        #fi.show_pan_mark(True)
         fi.add_callback('drag-drop', self.drop_file_cb)
         fi.add_callback('cursor-changed', self.cursor_cb)
         fi.set_bg(0.2, 0.2, 0.2)
@@ -130,7 +130,7 @@ class FitsViewer(QtGui.QMainWindow):
         canvas.register_for_cursor_drawing(fi)
         canvas.add_callback('draw-event', self.draw_cb)
         canvas.set_draw_mode('draw')
-        canvas.add_callback('enter',self.zoom_cb)
+        #canvas.add_callback('enter',self.zoom_cb)
         canvas.set_surface(fi)
         canvas.ui_set_active(True)
         self.canvas = canvas
@@ -200,7 +200,7 @@ class FitsViewer(QtGui.QMainWindow):
         zoom_fi.enable_autozoom('on')
         zoom_fi.set_zoom_algorithm('rate')
         zoom_fi.set_zoomrate(1.4)
-        zoom_fi.show_pan_mark(True)
+        #zoom_fi.show_pan_mark(True)
 
         zoom_fi.set_bg(0.2, 0.2, 0.2)
         zoom_fi.ui_set_active(True)
@@ -215,8 +215,8 @@ class FitsViewer(QtGui.QMainWindow):
         zoom_canvas.enable_edit(True)
         zoom_canvas.set_drawtype('rectangle', color='lightblue')
         zoom_canvas.register_for_cursor_drawing(zoom_fi)
-       # zoom_canvas.add_callback('draw-event', self.draw_cb)
-       # zoom_canvas.set_draw_mode('draw')
+        zoom_canvas.add_callback('draw-event', self.zoom_draw_cb)
+        zoom_canvas.set_draw_mode('draw')
         
         zoom_canvas.set_surface(zoom_fi)
         zoom_canvas.ui_set_active(True)
@@ -250,13 +250,22 @@ class FitsViewer(QtGui.QMainWindow):
         #zoom_vbox.addWidget(self.readout, stretch=0,
         #               alignment=QtCore.Qt.AlignCenter)
         
-        zmode = self.canvas.get_draw_mode()
+        zmode = self.zoom_canvas.get_draw_mode()
         
         zedit_btn = QtGui.QRadioButton("Edit Slit")
         zedit_btn.setChecked(zmode == 'edit')
-        zedit_btn.toggled.connect(lambda val: self.set_mode_cb('edit', val))
+        zedit_btn.toggled.connect(lambda val: self.zoom_set_mode_cb('edit', val))
         zedit_btn.setToolTip("Choose this to edit things on the canvas")
         zoom_vbox.addWidget(zedit_btn)
+        
+
+        zdraw_btn1 = QtGui.QRadioButton("Draw")
+        zdraw_btn1.setChecked(zmode == 'draw')
+        zdraw_btn1.toggled.connect(lambda val: self.zoom_set_mode_cb('draw', val))
+        zdraw_btn1.setToolTip("Choose this to draw on the canvas")
+        zoom_vbox.addWidget(zdraw_btn1)
+
+
         
         self.zoom_vbox = zoom_vbox
         main_layout.addLayout(zoom_vbox,0,2)
@@ -542,23 +551,19 @@ class FitsViewer(QtGui.QMainWindow):
         text = text_pix + text_coords + text_mir
         self.readout.setText(text)
 
-    def set_mode_cb(self, mode, tf):
-        self.logger.info("canvas mode changed (%s) %s" % (mode, tf))
-        if not (tf is False):
-            self.canvas.set_draw_mode(mode)
-        return True
+
 
     def zoom_cb(self, obj):
         
         
         upleft, loright = obj.get_data_points()
         #print(obj.get_data_points())
-        xmouse, ymouse = obj.get_data_points()[0]
+        xmouse, ymouse = obj.get_center_pt()#obj.get_data_points()[0]
         
         region_pix = RectanglePixelRegion(PixCoord(xmouse, ymouse), 
                                             width=100, height=100)
-        canvas_reg_box = apreg.add_region(canvas=self.canvas, r=region_pix)
-        self.canvas_reg_box = canvas_reg_box
+        #canvas_reg_box = apreg.add_region(canvas=self.canvas, r=region_pix)
+        self.canvas_reg_box = obj
         
         img_shape = self.AstroImage.as_hdu().data.shape
         print(img_shape[0])
@@ -589,26 +594,31 @@ class FitsViewer(QtGui.QMainWindow):
         zoomdata = self.zoom_fitsimage.get_image().get_data()
         
         mean, median, std = sigma_clipped_stats(zoomdata, sigma=2.0)
-        regsources = setup_slits.source_detector(zoomdata, fwhm=5, threshold=3*std)
+        regsources = setup_slits.single_source_detector(zoomdata, fwhm=5, threshold=3*std)
         self.regsources = regsources
         print("trying")
         
         try:
-            self.zoom_canvas.delete_object(self.zcanvas_slit_reg)
+            self.zoom_canvas.delete_object(self.zobj)
             print("removed previous slit from zoom canvas")
             self.zoomax.patches.remove(self.zoomax.patches[0])
         except:
             print("failed to remove aps")
             pass
             
-        zoom_slit_reg = RectanglePixelRegion(PixCoord(regsources.loc[0,'xcentroid'],
-                                    regsources.loc[0,'ycentroid']), 20, 3)
+        #zoom_slit_reg = RectanglePixelRegion(PixCoord(regsources.loc[0,'xcentroid'],
+         #                           regsources.loc[0,'ycentroid']), 20, 3)
+         
+        zoom_centroid_point = PointPixelRegion(PixCoord(regsources.loc[0,'xcentroid'],
+                                                         regsources.loc[0,'ycentroid']),
+                                                         visual=RegionVisual(marker="x"))
         
-        self.zoom_slit_rect = zoom_slit_reg
+        #zcanvas_cent_point = apreg.add_region(canvas=self.zoom_canvas,r=zoom_centroid_point)
+        #self.zoom_slit_rect = zoom_slit_reg
         #slit_reg.as_mpl_selector(self.zoomax)
-        zcanvas_slit_reg = apreg.add_region(canvas=self.zoom_canvas,r=zoom_slit_reg)
+        #zcanvas_slit_reg = apreg.add_region(canvas=self.zoom_canvas,r=zoom_slit_reg)
         
-        self.zcanvas_slit_reg = zcanvas_slit_reg
+        #self.zcanvas_slit_reg = zcanvas_slit_reg
         
         positions = np.transpose((regsources['xcentroid'], regsources['ycentroid']))
         
@@ -634,46 +644,59 @@ class FitsViewer(QtGui.QMainWindow):
         if pattern_name=='':
             
             pat_num = len(self.saved_patterns)+1
-            pattern_name = "pattern{}.png".format(pat_num)
+            pattern_name = "pattern{}".format(pat_num)
         
         if not os.path.exists("Saved_DMD_Patterns"):
             
             os.mkdir("Saved_DMD_Patterns")
             
             
-        pattern_name = "Saved_DMD_Patterns/{}".format(pattern_name)
+        pattern_name = "Saved_DMD_Patterns/{}.png".format(pattern_name)
+        print(pattern_name)
         pattern_table, redo_inds, bin_pattern = \
-                        setup_slits.write_DMD_pattern(self.slitsDF,save_pattern=True,
+                        setup_slits.write_DMD_pattern(self.slitDF,save_pattern=True,
                                                       pattern_name=pattern_name)
-        
+        print(bin_pattern)
 
     def add_slit(self):
         
-        main_canvas_slit_rect = RectanglePixelRegion(PixCoord(self.main_xc,self.main_yc),
-                                                     20,3)
+        #main_canvas_slit_rect = RectanglePixelRegion(PixCoord(self.main_xc,self.main_yc),
+        #                                             20,3)
+       
+        #rectangle object .get_bbox() returns ((x0,y0), (x0,y1), (x1,y1), (x1,y0)), starting from
+        #the lower left and proceeding clockwise
+        x0,y0 = self.zobj.get_bbox()[0]
+        x1,y1 = self.zobj.get_bbox()[2]
+        
+        
+        slit_width = np.abs(x1-x0)
+        slit_height = np.abs(y1-y0)
+        main_canvas_slit_rect =  RectanglePixelRegion(PixCoord(self.main_xc,self.main_yc),
+                                            width=slit_width,height=slit_height)
         main_canvas_add_reg = apreg.add_region(canvas=self.canvas,r=main_canvas_slit_rect)
         
+        self.SlitObjectList.append(main_canvas_slit_rect)
         self.main_canvas_slit_rect = main_canvas_slit_rect
         
 
         
         if not os.path.exists("test_regions.reg"):
-            # check to see if region file has already been made
-            test_regfile = open("test_regions.reg",'w')
-            
-            head_text = ' # Region file format: DS9 version 4.1'+'\n' + \
-                        'global color=green dashlist=8 3 width=1 ' + \
-                        'font="helvetica 10 normal roman" select=1 highlite=1 '+ \
-                        'dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1' + \
-                        '\n' + 'image \n'
-            
-            
-            test_regfile.write(head_text)
-            
+             # check to see if region file has already been made
+             test_regfile = open("test_regions.reg",'w')
+             
+             head_text = ' # Region file format: DS9 version 4.1'+'\n' + \
+                         'global color=green dashlist=8 3 width=1 ' + \
+                         'font="helvetica 10 normal roman" select=1 highlite=1 '+ \
+                         'dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1' + \
+                         '\n' + 'image \n'
+             
+             
+             test_regfile.write(head_text)
+             
         else:
-            # if file exists, append to it
-            test_regfile = open("test_regions.reg","a")
-            
+             # if file exists, append to it
+             test_regfile = open("test_regions.reg","a")
+     
             
         # x,y,width,height,angle
         xc = np.round(self.main_xc,3)
@@ -711,42 +734,49 @@ class FitsViewer(QtGui.QMainWindow):
                                   x1,y1, dmd_x, dmd_y, dmd_x0, dmd_y0, dmd_x1, dmd_y1]],
                                     columns=self.slitDF.columns.values)
         
-        self.slitDF = pd.concat((self.slitDF,new_slit_row),axis=0)
+        self.slitDF = pd.concat((self.slitDF,new_slit_row),axis=0).reset_index(drop=True)
         
-        for i in self.slitDF.index.values:
-            
-            obj = QTableWidgetItem(i+1)
-            ra = QTableWidgetItem("nan")
-            dec = QTableWidgetItem("nan")
-            imxc = QTableWidgetItem(self.slitDF.loc[i,"image_xc"])
-            imyc = QTableWidgetItem(self.slitDF.loc[i,"image_yc"])
+        
+        
+        if self.wslit_table.rowCount()<1:
+            rowPosition=0
+            i = self.slitDF.index.values[-1]
+            self.wslit_table.setColumnCount(15)
+        
+        else:
+            # get the most recent slit added to the list
+            self.slitDF.index.values[-1:]
+            rowPosition = self.wslit_table.rowCount()
+        
+        self.wslit_table.insertRow(rowPosition)
+        
+        #for i in self.slitDF.index.values[-1:]:
+        i = self.slitDF.index.values[-1] 
+        obj = str(i+1)
+        ra = "nan"
+        dec = "nan"
+        imxc = str(self.slitDF.loc[i,"image_xc"])
+        imyc = str(self.slitDF.loc[i,"image_yc"])
 
-            imx0 = QTableWidgetItem(self.slitDF.loc[i,"image_x0"])
-            imy0 = QTableWidget(self.slitDF.loc[i,"image_y0"])
-            imx1 = QTableWidget(self.slitDF.loc[i,"image_x1"])
-            imy1 = QTableWidget(self.slitDF.loc[i,"image_y1"])
-            dmdxc = QTableWidgetItem(self.slitDF.loc[i,"dmd_xc"])
-            dmdyc = QTableWidgetItem(self.slitDF.loc[i,"dmd_yc"])
-            dmdx0 = QTableWidget(self.slitDF.loc[i,"dmd_x0"])
-            dmdy0 = QTableWidget(self.slitDF.loc[i,"dmd_y0"])
-            dmdx1 = QTableWidget(self.slitDF.loc[i,"dmd_x1"])
-            dmdy1 = QTableWidget(self.slitDF.loc[i,"dmd_y1"])
-            
-            self.wslit_table.setItem(i, 0, obj)
-            self.wslit_table.setItem(i, 1, ra)
-            self.wslit_table.setItem(i, 2, dec)
-            self.wslit_table.setItem(i, 3, imx0)
-            self.wslit_table.setItem(i, 4, imy0)
-            self.wslit_table.setItem(i, 5, imx1)
-            self.wslit_table.setItem(i, 6, imy1)
-            self.wslit_table.setItem(i, 7, dmdx0)
-            self.wslit_table.setItem(i, 8, dmdy0)
-            self.wslit_table.setItem(i, 9, dmdx1)
-            self.wslit_table.setItem(i, 10, dmdy1)
+        imx0 = str(self.slitDF.loc[i,"image_x0"])
+        imy0 = str(self.slitDF.loc[i,"image_y0"])
+        imx1 = str(self.slitDF.loc[i,"image_x1"])
+        imy1 = str(self.slitDF.loc[i,"image_y1"])
+        dmdxc = str(self.slitDF.loc[i,"dmd_xc"])
+        dmdyc = str(self.slitDF.loc[i,"dmd_yc"])
+        dmdx0 = str(self.slitDF.loc[i,"dmd_x0"])
+        dmdy0 = str(self.slitDF.loc[i,"dmd_y0"])
+        dmdx1 = str(self.slitDF.loc[i,"dmd_x1"])
+        dmdy1 = str(self.slitDF.loc[i,"dmd_y1"])
+        
+        row_items = [obj, ra, dec, imxc, imyc, imx0, imy0, imx1, imy1,
+                     dmdxc, dmdyc, dmdx0, dmdy0, dmdx1, dmdy1]
+        
+        for i, item in enumerate(row_items):
+            self.wslit_table.setItem(rowPosition, i, QTableWidgetItem(item))
            
         
         print("added")
-        
         
         
         self.canvas.delete_object(self.canvas_reg_box)
@@ -770,12 +800,36 @@ class FitsViewer(QtGui.QMainWindow):
         #obj.add_callback('pick-key', self.detect_reg_sources, 'key')
         obj.pickable = True
         obj.add_callback('edited', self.edit_cb)
+        
         self.zoom_cb(obj)
         
         self.obj = obj
         
+    def zoom_draw_cb(self, canvas, tag):
         
+        zobj = canvas.get_object_by_tag(tag)
+        zobj.add_callback('pick-down', self.pick_cb, 'down')
+        zobj.add_callback('pick-up', self.pick_cb, 'up')
+        zobj.add_callback('pick-move', self.pick_cb, 'move')
+        #zobj.add_callback('pick-hover', self.pick_cb, 'hover')
+        zobj.add_callback('pick-enter', self.pick_cb, 'enter')
+        #zobj.add_callback('pick-leave', self.pick_cb, 'leave')
+        #zobj.add_callback('pick-key', self.detect_reg_sources, 'key')
+        zobj.pickable = True
+        zobj.add_callback('edited', self.edit_cb)
+        self.zobj = zobj
         
+    def set_mode_cb(self, mode, tf):
+        self.logger.info("canvas mode changed (%s) %s" % (mode, tf))
+        if not (tf is False):
+            self.canvas.set_draw_mode(mode)
+        return True
+    
+    def zoom_set_mode_cb(self, mode, tf):
+        self.logger.info("canvas mode changed (%s) %s" % (mode, tf))
+        if not (tf is False):
+            self.zoom_canvas.set_draw_mode(mode)
+        return True        
 
         #print(obj.get_data_points())
     def pick_cb(self, obj, canvas, event, pt, ptype):
@@ -787,6 +841,12 @@ class FitsViewer(QtGui.QMainWindow):
     def edit_cb(self, obj):
         self.logger.info("object %s has been edited" % (obj.kind))
         self.obj = obj
+        #self.zoom_cb(obj)
+        return True
+    
+    def zoom_edit_cb(self, obj):
+        self.logger.info("object %s has been edited" % (obj.kind))
+        self.zobj = obj
         self.zoom_cb(obj)
         return True
 

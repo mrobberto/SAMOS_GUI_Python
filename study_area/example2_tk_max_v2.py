@@ -431,7 +431,7 @@ class FitsViewer(object):
             print("It is a slit")
             print("Handle the rectangle as a slit")
             self.slit_handler(obj)    
-
+        
     def slit_handler(self, point):
         print('ready to associate a slit to ')
         print(point)
@@ -440,8 +440,8 @@ class FitsViewer(object):
         x_c = point.points[0][0]-1#really needed?
         y_c = point.points[0][1]-1
         #create area to search, using astropy instead of ginga (still unclear how you do it with ginga)
-        r = regions.RectanglePixelRegion(center=regions.PixCoord(x=x_c, y=y_c),
-                                        width=15, height=15,
+        r = regions.RectanglePixelRegion(center=regions.PixCoord(x=round(x_c), y=round(y_c)),
+                                        width=50, height=50,
                                         angle = 0*u.deg)
         # and we convert it to ginga...
         obj = r2g(r)
@@ -450,12 +450,12 @@ class FitsViewer(object):
         print("check")
         data_box = self.img.cutout_shape(obj)
         
-#        obj = self.canvas.get_draw_class('rectangle')
-#        obj(x1=x_c-20,y1=y_c-20,x2=x_c+20,y2=y_c+20,
-#                        width=100,
-#                        height=30,
-#                        angle = 0*u.deg)
-#        data_box = self.img.cutout_shape(obj)
+  #      obj = self.canvas.get_draw_class('rectangle')
+  #      obj(x1=x_c-20,y1=y_c-20,x2=x_c+20,y2=y_c+20,
+  #                      width=100,
+  #                      height=30,
+  #                      angle = 0*u.deg)
+  #      data_box = self.img.cutout_shape(obj)
         peaks = iq.find_bright_peaks(data_box)
         print(peaks[:20])  # subarea coordinates
         x1=obj.x-obj.xradius

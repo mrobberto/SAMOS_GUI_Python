@@ -7,9 +7,20 @@ Created on Thu Dec 30 10:49:37 2021
 """
 import tkinter as tk
 from tkinter import ttk
+
+#for image display
+from ginga.tkw.ImageViewTk import CanvasView
+from ginga.misc import log
+
 import os
 cwd = os.getcwd()
 print(cwd)
+
+
+#to load the on/off images
+#absolute path of this file
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
 
 class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel widget
     def __init__(self, master=None):  #__init__ constructor method. 
@@ -32,13 +43,6 @@ class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel
         self.frame0l.place(x=0, y=0, anchor="nw", width=950, height=590)
 
 # =============================================================================
-#      REFERENCE FILES
-# 
-
-
-
-
-# =============================================================================
 #         
 #  #    ACQUIRE IMAGE Frame
 #         
@@ -48,7 +52,11 @@ class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel
         
         
   
-  
+# =============================================================================
+#       CONTROL OF SCIENCE AND REFERENCE FILES
+# 
+# =============================================================================
+
 #        root = tk.Tk()
 #        root.title("Tab Widget")
         tabControl = ttk.Notebook(self.frame2l)
@@ -57,11 +65,13 @@ class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel
         tab2 = ttk.Frame(tabControl)
         tab3 = ttk.Frame(tabControl)
         tab4 = ttk.Frame(tabControl)
+        tab5 = ttk.Frame(tabControl)
   
         tabControl.add(tab1, text ='Image')
         tabControl.add(tab2, text ='Bias')
         tabControl.add(tab3, text ='Dark')
         tabControl.add(tab4, text ='Flat')
+        tabControl.add(tab5, text ='Buffer')
         tabControl.pack(expand = 1, fill ="both")
   
 # =============================================================================
@@ -220,7 +230,61 @@ class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel
         subtract_Flat = tk.IntVar()
         check_Flat = tk.Checkbutton(labelframe_Acquire, text='Flat',variable=subtract_Flat, onvalue=1, offvalue=0)
         check_Flat.place(x=120,y=140)
+        subtract_Buffer = tk.IntVar()
+        check_Buffer = tk.Checkbutton(labelframe_Acquire, text='Buffer',variable=subtract_Buffer, onvalue=1, offvalue=0)
+        check_Buffer.place(x=180,y=140)
 
+# =============================================================================
+#      Buffer
+# =============================================================================
+        labelframe_Buffer =  tk.LabelFrame(tab5, text="Buffer", 
+                                                     width=300, height=170,
+                                                     font=("Arial", 24))
+        labelframe_Buffer.pack(fill="both", expand="yes")
+
+        label_Buffer_ExpT =  tk.Label(labelframe_Buffer, text="Exposure time (s):")
+        label_Buffer_ExpT.place(x=4,y=10)
+        self.Buffer_ExpT = tk.StringVar(value="0.00")
+        entry_Buffer_ExpT = tk.Entry(labelframe_Buffer, width=6,  bd =3, textvariable=self.Buffer_ExpT)
+        entry_Buffer_ExpT.place(x=120, y=6)
+        
+        label_Buffer_NofFrames =  tk.Label(labelframe_Buffer, text="Nr. of Frames:")
+        label_Buffer_NofFrames.place(x=4,y=40)
+        self.Buffer_NofFrames = tk.StringVar(value="10")
+        entry_Buffer_NofFrames = tk.Entry(labelframe_Buffer, width=5,  bd =3, textvariable=self.Buffer_NofFrames)
+        entry_Buffer_NofFrames.place(x=100, y=38)
+        
+        
+        var_Buffer_saveall = tk.IntVar()
+        r1_Buffer_saveall = tk.Radiobutton(labelframe_Buffer, text = "Save single frames", variable=var_Buffer_saveall, value=1)
+        r1_Buffer_saveall.place(x=150, y=38)
+
+        label_Buffer_MasterFile =  tk.Label(labelframe_Buffer, text="Master Buffer File:")
+        label_Buffer_MasterFile.place(x=4,y=70)
+        self.Buffer_MasterFile = tk.StringVar(value="Buffer")
+        entry_Buffer_MasterFile = tk.Entry(labelframe_Buffer, width=11,  bd =3, textvariable=self.Buffer_MasterFile)
+        entry_Buffer_MasterFile.place(x=120, y=68)
+
+        button_ExpStart=  tk.Button(labelframe_Buffer, text="START", bd=3, bg='#0052cc',font=("Arial", 24))#,
+#                                          command=expose)
+        button_ExpStart.place(x=75,y=95)
+
+
+
+        label_Display =  tk.Label(labelframe_Acquire, text="Subtract for Display:")
+        label_Display.place(x=4,y=120)
+        subtract_Bias = tk.IntVar()
+        check_Bias = tk.Checkbutton(labelframe_Acquire, text='Bias',variable=subtract_Bias, onvalue=1, offvalue=0)
+        check_Bias.place(x=4, y=140)
+        subtract_Dark = tk.IntVar()
+        check_Dark = tk.Checkbutton(labelframe_Acquire, text='Dark',variable=subtract_Dark, onvalue=1, offvalue=0)
+        check_Dark.place(x=60,y=140)
+        subtract_Flat = tk.IntVar()
+        check_Flat = tk.Checkbutton(labelframe_Acquire, text='Flat',variable=subtract_Flat, onvalue=1, offvalue=0)
+        check_Flat.place(x=120,y=140)
+        subtract_Buffer = tk.IntVar()
+        check_Buffer = tk.Checkbutton(labelframe_Acquire, text='Buffer',variable=subtract_Buffer, onvalue=1, offvalue=0)
+        check_Buffer.place(x=180,y=140)
 
 # =============================================================================
 #      CCD Setup panel
@@ -232,17 +296,17 @@ class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel
         labelframe_Setup =  tk.LabelFrame(self.frame2r, text="Camera Seup", font=("Arial", 24))
         labelframe_Setup.pack(fill="both", expand="yes")
         
-        #camera_is_open = tk.IntVar()
-        button_open_camera= tk.Button(labelframe_Setup, text='Open Camera')
+#        #camera_is_open = tk.IntVar()
+#        button_open_camera= tk.Button(labelframe_Setup, text='Open Camera')
                                                         #command = open_close_camera)
-        button_open_camera.place(x=4, y=104)
+#        button_open_camera.place(x=4, y=104)
         
-        button_cooler_on= tk.Button(labelframe_Setup, text='Cooler on')
+#        button_cooler_on= tk.Button(labelframe_Setup, text='Cooler on')
                                                         #command = open_close_camera)
-        button_cooler_on.place(x=4, y=124)
+#        button_cooler_on.place(x=4, y=124)
         
-        
-        # Create Label
+ #=========#=========#=========#=========#=========#=========#=========       
+        # CAMERA ON/OFF SWITCH
         self.camera_is_on = False
         self.label_camera_ON = tk.Label(labelframe_Setup,
                          text = "The Camera is off",
@@ -251,12 +315,51 @@ class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel
         self.label_camera_ON.place(x=4,y=8)
         
         # Define Our Images
-        self.on_png = tk.PhotoImage(file = "../tk_utilities/on.png")
-        self.off_png = tk.PhotoImage(file = "../tk_utilities/off.png")
+        self.on_png = tk.PhotoImage(file = dir_path + "/tk_CCD_utilities/on.png")
+        self.off_png = tk.PhotoImage(file = dir_path + "/tk_CCD_utilities/off.png")
         self.button_open_camera= tk.Button(labelframe_Setup, image=self.off_png, bd=0, command=self.turn_camera_ON)
                                                         #command = open_close_camera)
         self.button_open_camera.place(x=180, y=0)
 
+ #=========#=========#=========#=========#=========#=========#=========       
+        # COOLER ON/OFF SWITCH
+        self.cooler_is_on = False
+        self.label_cooler_ON = tk.Label(labelframe_Setup,
+                         text = "The Cooler is off",
+                         fg = "grey",
+                         font = ("Helvetica", 20))
+        self.label_cooler_ON.place(x=4,y=58)
+        
+        # Define Our Images
+        self.button_open_cooler= tk.Button(labelframe_Setup, image=self.off_png, bd=0, command=self.turn_cooler_ON)
+                                                        #command = open_close_camera)
+        self.button_open_cooler.place(x=180, y=50)
+ #=========#=========#=========#=========#=========#=========#=========       
+        # COOLER TEMPERATURE SETUP AND VALUE
+        label_Tset =  tk.Label(labelframe_Setup, text="CCD Temperature Sepoint (C)")
+        label_Tset.place(x=4,y=98)
+        self.Tset = tk.StringVar()
+        self.Tset.set("-90")
+        entry_Tset = tk.Entry(labelframe_Setup, 
+                              textvariable=self.Tset, width=5,
+                              #font=('Arial',16),
+                              bd =3)
+        entry_Tset.place(x=200, y=96)
+        #
+        label_Tdet = tk.Label(labelframe_Setup, text="Current CCD Temperature (K)")
+        label_Tdet.place(x=4,y=128)
+        self.Tdet = tk.IntVar()
+        label_show_Tdet = tk.Label(labelframe_Setup, 
+                                   textvariable=self.Tdet,
+                                   font=('Arial',16),
+                                   borderwidth=3,
+                                   relief="sunken",
+                                   bg="green",fg="white",
+                                   text=str(273))
+        label_show_Tdet.place(x=200,y=126)
+        self.Tdet.set(273)
+            
+ #=========#=========#=========#=========#=========#=========#=========       
     def turn_camera_ON(self):
         #global camera_is_on
          
@@ -269,6 +372,20 @@ class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel
             self.button_open_camera.config(image = self.on_png)
             self.label_camera_ON.config(text = "The Camera is On", fg = "green")
             self.camera_is_on = True
+
+ #=========#=========#=========#=========#=========#=========#=========       
+    def turn_cooler_ON(self):
+        #global camera_is_on
+         
+        # Determine is on or off
+        if self.cooler_is_on:
+            self.button_open_cooler.config(image = self.off_png)
+            self.label_cooler_ON.config(text = "The Cooler is Off",fg = "grey")
+            self.cooler_is_on = False
+        else:
+            self.button_open_cooler.config(image = self.on_png)
+            self.label_cooler_ON.config(text = "The Cooler is On", fg = "green")
+            self.cooler_is_on = True
 
         """ 
         #        labelframe_Grating.place(x=4, y=10)

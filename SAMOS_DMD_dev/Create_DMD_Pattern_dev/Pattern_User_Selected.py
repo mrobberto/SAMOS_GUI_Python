@@ -27,14 +27,14 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 
 
-from ginga.tkw.ImageViewTk import CanvasView
-from ginga.canvas.CanvasObject import get_canvas_types
-from ginga.misc import log
-from ginga.util.loader import load_data
+#from ginga.tkw.ImageViewTk import CanvasView
+#from ginga.canvas.CanvasObject import get_canvas_types
+#from ginga.misc import log
+#from ginga.util.loader import load_data
 from ginga.util import io_fits
 
 from ginga.AstroImage import AstroImage
-img = AstroImage()
+#img = AstroImage()
 from astropy.io import fits
 
 import tkinter as tk
@@ -55,7 +55,8 @@ from astropy.visualization import simple_norm
 sys.path.insert(0,"../")
 import setup_slits
 importlib.reload(setup_slits)
-from setup_slits import DMDSlit, DMD_Pattern_from_SlitList
+from setup_slits import DMDSlit
+#ƒbfrom setup_slits import DMD_Pattern_from_SlitList
 
 
 
@@ -101,20 +102,29 @@ class MyDMD(object):
         self.ccd2dmd_wcs = WCS(imhead,relax=True)
         self.imhead = imhead
         self.imdata = imdata
-        self.dc = get_canvas_types()
-        
+        #self.dc = get_canvas_types()
+
+        """
+        Box for the calibration image taaken by the CCD
+        """
         vbox = tk.Frame(root, relief=tk.RAISED, borderwidth=1)
 #        vbox.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-        vbox.pack(side=tk.TOP)
+#        vbox.pack(side=tk.TOP)
         vbox.place(x=5, y=0, anchor="nw")#, width=500, height=800)
         self.vb = vbox
         
+        """
+        fig is an empty object, class Figure: "instantiation" of fig
+        """
         fig = Figure(figsize=(8,8))#,tight_layout=True,)
         ax = fig.add_axes([0,0,1,1],frameon=False)
         self.fig = fig
         self.ax = ax
         
-
+        """
+        main canvas is an instatiation of FigureCanvasTkAgg class. 
+        This is a special canvas upon which Matplotlib graphics can be plotted
+        """
         main_canvas = FigureCanvasTkAgg(fig, vbox,)
         main_canvas.draw()
         main_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)

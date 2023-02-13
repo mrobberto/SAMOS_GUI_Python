@@ -1055,8 +1055,8 @@ class SAMOS_Main(object):
                                                format='str', coords='fits')
 
         except Exception as e:
-            self.logger.warning("Bad coordinate conversion: %s" % (
-                str(e)))
+            #self.logger.warning("Bad coordinate conversion: %s" % (
+            #    str(e)))
             ra_txt = 'BAD WCS'
             dec_txt = 'BAD WCS'
 

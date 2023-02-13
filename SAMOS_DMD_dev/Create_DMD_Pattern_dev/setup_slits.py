@@ -9,10 +9,225 @@ from astroquery.gaia import Gaia
 from astroquery.vizier import Vizier
 import math
 
+from ginga.util.iqcalc import IQCalc
+
+from astropy.stats import mad_std, sigma_clipped_stats
+from photutils.detection import IRAFStarFinder, DAOStarFinder
+from skimage import util
+
+
+
+
+
+
+
+
+def source_detector(image, fwhm, threshold):
+
+	daofind = DAOStarFinder(fwhm=fwhm,threshold=threshold, brightest=1)
+	daosources = daofind(image).to_pandas()
+
+	x_guess, y_guess = daosources.loc[0,["xcentroid", "ycentroid"]]
+	daosource = daosources.iloc[0]
+	#print(x_guess, y_guess)
+	#print(daosource)
+	print(x_guess, y_guess)
+
+	iqcalc = IQCalc()
+
+	xc, yc = iqcalc.find_bright_peaks(data=image)[0]
+	radius = image.shape[1]/2.
+	#print(iqcalc.get_fwhm(x=xc,y=yc,radius=radius,data=image))
+	fwhm_x, fwhm_y, xcent, ycent, fwhm_x_dict, fwhm_y_dict = iqcalc.get_fwhm(x=xc,y=yc,radius=radius,data=image)
+
+	source_df = pd.DataFrame(data=np.array([[xcent, ycent, fwhm_x, fwhm_y]]),
+							columns=["xcentroid", "ycentroid", "fwhm_x", "fwhm_y"])
+
+	print(source_df)
+	return source_df
+
+def write_DMD_pattern(slit_table, save_pattern=False, pattern_name='pattern.png'):
+
+	"""
+	The columns used from the input table should be 
+	object
+	RA
+	DEC
+	dmd_xc
+	dmd_yc
+	dmd_x0
+	dmd_y0
+	dmd_x1
+	dmd_y1
+
+	First makes sure that the spectra won't overlap, so it saves the indices of 
+	objects for which a different pattern needs to be made.
+	I will make a loop that does it automatically.
+
+	Pattern name can be user input from the GUI.
+	"""
+	slit_table = slit_table.sort_values(by="dmd_x0").reset_index(drop=True)
+
+	left_mirs = []
+	right_mirs = []
+	upper_mirs = []
+	lower_mirs = []
+	dmd_dx0s = [] 
+	dmd_dy0s = []
+	dmd_dx1s = []
+	dmd_dy1s = []
+	good_index = []
+
+	redo_index = []
+	dmd_slits = []
+	j = 0
+	slit_num = 0
+	for i in slit_table.index.values:
+
+		if i==0:
+			print('accepting first target', i)
+			good_index.append(i)
+			ra, dec = slit_table.loc[i, ['RA', 'DEC']].values
+			coords0 = SkyCoord(90, 20,unit='deg')
+			
+
+			dmd_xc, dmd_yc = slit_table.loc[i, ["dmd_xc", "dmd_yc"]]
+			dmd_x0, dmd_y0 = slit_table.loc[i, ["dmd_x0", "dmd_y0"]]
+			dmd_x1, dmd_y1 = slit_table.loc[i, ["dmd_x1", "dmd_y1"]]
+
+
+			print("append slit {}".format(i))
+			left_mirs.append(dmd_x0)
+			right_mirs.append(dmd_x1)
+			upper_mirs.append(dmd_y0)
+			lower_mirs.append(dmd_y1)
+			
+
+			dx0 = dmd_xc-dmd_x0
+			dy0 = dmd_yc-dmd_y0
+			dx1 = dmd_x1-dmd_xc
+			dy1 = dmd_y1-dmd_yc
+
+			dmd_dx0s.append(dx0)
+			dmd_dy0s.append(dy0)
+			dmd_dx1s.append(dx1)
+			dmd_dy1s.append(dy1)
+		
+			sl = DMDSlit(ra=ra,dec=dec, xc=dmd_xc, yc=dmd_yc, x0=dmd_x0, x1=dmd_x1, 
+					 y0=dmd_y0, y1=dmd_y1, slit_n=slit_num)
+			
+
+			dmd_slits.append(sl)
+			slit_num+=1
+		
+		if j-i >= 1: 
+			continue
+
+		j=i+1
+
+		if len(slit_table)<2:
+
+			pcols = ["target", "ra", "dec", "dmd_xc", "dmd_yc", "dmd_dx0", "dmd_dy0", "dmd_dx1", "dmd_dy1"]
+			pdata = np.vstack((slit_table.loc[i, 'object'],
+					  slit_table.loc[i, 'RA'], slit_table.loc[i, 'DEC'],
+					  slit_table.dmd_xc.values, slit_table.dmd_yc.values, np.array(dmd_dx0s), np.array(dmd_dy0s), 
+					  np.array(dmd_dx1s), np.array(dmd_dy1s))).T
+
+
+			pattern_table = pd.DataFrame(data=pdata, columns=pcols)
+			return pattern_table, redo_index
+
+
+		while ((slit_table.iloc[j]['dmd_x0'] > slit_table.iloc[i]['dmd_x1']) & (j<len(slit_table)-1)):
+								### '>' because images from Strasbourg decrease in RA from left to right.
+			print('skipping target', j)
+			#print(target_table.iloc[j]['slit_edges_left'], target_table.iloc[i]['slit_edges_right'])
+			redo_index.append(j)
+			j+=1
+		
+		print('accepting target', j)
+		print('\n')
+		good_index.append(j)
+
+
+		ra, dec = slit_table.loc[j, ['RA', 'DEC']].values
+		coords0 = SkyCoord(90, 20,unit='deg')
+
+
+		dmd_xc, dmd_yc = slit_table.loc[j, ["dmd_xc", "dmd_yc"]]
+		dmd_x0, dmd_y0 = slit_table.loc[j, ["dmd_x0", "dmd_y0"]]
+		dmd_x1, dmd_y1 = slit_table.loc[j, ["dmd_x1", "dmd_y1"]]
+
+
+		print("append slit {}".format(j))
+		left_mirs.append(dmd_x0)
+		right_mirs.append(dmd_x1)
+		upper_mirs.append(dmd_y0)
+		lower_mirs.append(dmd_y1)
+		
+
+		dx0 = dmd_xc-dmd_x0
+		dy0 = dmd_yc-dmd_y0
+		dx1 = dmd_x1-dmd_xc
+		dy1 = dmd_y1-dmd_yc
+
+		dmd_dx0s.append(dx0)
+		dmd_dy0s.append(dy0)
+		dmd_dx1s.append(dx1)
+		dmd_dy1s.append(dy1)
+	
+		sl = DMDSlit(ra=ra,dec=dec, xc=dmd_xc, yc=dmd_yc, x0=dmd_x0, x1=dmd_x1, 
+				 y0=dmd_y0, y1=dmd_y1, slit_n=slit_num)
+		
+
+		dmd_slits.append(sl)
+		slit_num+=1
+
+
+	pcols = ["target", "ra", "dec", "dmd_xc", "dmd_yc", "dmd_dx0", "dmd_dy0", "dmd_dx1", "dmd_dy1"]
+	pdata = np.vstack((slit_table.loc[good_index, 'object'].values,
+					  slit_table.loc[good_index, 'RA'].values, slit_table.loc[good_index, 'DEC'].values,
+					  slit_table.dmd_xc.values, slit_table.dmd_yc.values, np.array(dmd_dx0s), np.array(dmd_dy0s), 
+					  np.array(dmd_dx1s), np.array(dmd_dy1s))).T
+
+
+	pattern_table = pd.DataFrame(data=pdata, columns=pcols)
+
+	#### this line creates the actual png image which can be uploaded to the DMD ###
+	bin_pattern = create_test_shape(pattern_table, save_pattern=save_pattern)
+
+	return pattern_table, redo_index, bin_pattern
+
+from PIL import Image
+def create_test_shape(table, save_pattern=False, pattern_save_name='pattern.png',inverted=False):
+
+    xoffset = 0#np.full(len(table.index),int(0))
+    yoffset = np.full(len(table.index),int(2048/4))
+    y1 = (np.around(table['dmd_yc'].values.astype(float))-np.floor(table['dmd_dy0'].values.astype(float))).astype(int) + yoffset
+    y2 = (np.around(table['dmd_yc'].values.astype(float))+np.ceil(table['dmd_dy1'].values.astype(float))).astype(int) + yoffset
+    x1 = (np.around(table['dmd_xc'].values.astype(float))-np.floor(table['dmd_dx0'].values.astype(float))).astype(int) + xoffset
+    x2 = (np.around(table['dmd_xc'].values.astype(float))+np.ceil(table['dmd_dx1'].values.astype(float))).astype(int) + xoffset
+    if inverted:
+        test_shape = np.zeros((2048,1080))
+        for i in table.index:
+            test_shape[y1[i]:y2[i],x1[i]:x2[i]]=1
+    else:
+        test_shape = np.ones((2048,1080)) # This is the size of the DC2K
+        for i in table.index:
+            test_shape[y1[i]:y2[i],x1[i]:x2[i]]=0
+    test_shape = np.uint8(test_shape) #test_shape.astype(np.uint8)
+    
+    if save_pattern:
+    
+        im_pattern = Image.fromarray(test_shape)
+        im_pattern.save(pattern_save_name)
+    
+    return test_shape
+
 
 class DMDSlit:
 
-	def __init__(self, ra, dec, x0, y0, x1, y1, 
+	def __init__(self, ra, dec, xc, yc, x0, y0, x1, y1, 
 				slit_n=None):
 		
 		
@@ -36,10 +251,6 @@ class DMDSlit:
 		
 		dx = x1-x0
 		dy = y1-y0
-
-
-		
-		
 		
 		
 		xc = x0+math.floor(dx/2)
@@ -66,205 +277,3 @@ class DMDSlit:
 
 
 
-def DMD_Pattern_from_SlitList(target_table, wcs=None, ra_center=None, dec_center=None, slit_xsize=7, slit_ysize=3, pos_angle=0.):
-
-	"""
-	Given slit sizes/widths, and a list of targets, create a pattern 
-	where source spectra won't overlap each other. 
-
-	Input:
-			target_table  - Table with targets.  Must have columns for RA and DEC in J2000d
-			wcs           - WCS for transforming target coordinates to pixel/mirror  coordinate.  Default 
-							is to create WCS for DMD directly.  Otherwise, can go from CCD pixels.
-			slit_xsize    - int or array of ints representing length (in mirrors) of slit(s) in x-direction
-			slit_ysize    - int or array ints representing the width (in mirrors) of slit(s) in y-direction.
-		
-	"""
-
-	if len(target_table)>1:
-		print("length > 1")
-		target_table = target_table.sort_values(by="ra", ascending=False)
-
-
-	if wcs is None:
-		# or is it 3.1???  
-		scale = 3.095*60./1080 # 3.095 arcmin fov projected over 1080x1080 mirrors
-
-		mx_center = 540 #center x mirror of 1080x1080 array
-		my_center = 540
-		wcs = create_wcs(pixscale1=scale,pixscale2=scale, pos_angle=0., 
-						naxis1=1080, naxis2=1080, crval1=ra_center, crval2=dec_center,
-						crpix1=mx_center,crpix2=my_center)
-	else:
-		scale = np.abs(wcs.pixel_scale_matrix[0,0])*3600
-
-	if (ra_center is None) and (dec_center is None):
-		ra_center = (np.max(target_table['ra'])-np.min(target_table['ra'])) /2. + np.min(target_table['ra'])
-		dec_center = (np.max(target_table['dec'])-np.min(target_table['dec'])) /2. + np.min(target_table['dec'])
-	
-	
-	
-	
-	from astropy.wcs.utils import skycoord_to_pixel as sky2dmd
-
-	
-	slit_ra_centers = target_table['ra']
-	slit_dec_centers = target_table['dec']
-
-
-	half_slit_xsize = slit_xsize/2.
-	half_slit_ysize = slit_ysize/2. 
-
-	# I am referencing images from Strasburg and Aladin to write this. 
-	# Those images are oriented such that RA decreases from left to right, 
-	# which is why the input table and the left and right slit eges below 
-	# are also sorted in order of decreasing RA.
-
-	slit_edges_left = slit_ra_centers + (half_slit_xsize*scale / 3600.) #put into degrees bc that is unit of RA list
-	slit_edges_right = slit_ra_centers - (half_slit_xsize*scale / 3600.) 
-
-	
-	slit_edges_top = slit_dec_centers + (half_slit_ysize*scale / 3600.)
-	#print("tops",slit_edges_top)
-	slit_edges_bottom = slit_dec_centers - (half_slit_ysize*scale / 3600.)
-
-	#print(dmd_scale, slit_ra_centers,slit_edges_left)
-	target_table['slit_edges_left'] = slit_edges_left
-	target_table['slit_edges_right'] = slit_edges_right
-	target_table['slit_edges_top'] = slit_edges_top
-	target_table['slit_edges_bottom'] = slit_edges_bottom
-
-	#center of mass of the targets system
-	centerfield = (min(slit_edges_left)+max(slit_edges_left)) / 2.
-	centerfield_dec = (min(slit_edges_bottom)+max(slit_edges_bottom)) / 2.
-	#print("center_field ra,dec",centerfield,centerfield_dec)
-	#range in mirrors of the targets
-	range_mirrors = (max(slit_edges_left)-min(slit_edges_left))*3600./scale
-
-	good_index = []
-	mir_x = []
-	mir_y = []
-	mir_right = []
-	mir_left = []
-	mir_top = []
-	mir_bottom = []
-	dmd_slits = []
-	j=0 
-	slit_num = 0
-	for i in range(len(target_table)-1):
-
-		if i==0:
-			print('accepting first target', i)
-			good_index.append(i)
-			ra, dec = target_table.loc[i, ['ra', 'dec']].values
-			coords0 = SkyCoord(ra, dec,unit='deg')
-			
-
-			#print(coords0)
-			dmd_coords = sky2dmd(coords=coords0, wcs=wcs) # center of target coords in dmd coords.
-			dmd_xc, dmd_yc = dmd_coords
-			try:
-				half_slx = half_slit_xsize[i]
-				half_sly = half_slit_ysize[i]
-			except:
-				half_slx = half_slit_xsize
-				half_sly = half_slit_ysize
-			ml = dmd_xc-half_slx
-			mr = dmd_xc+half_slx
-			mt = dmd_yc+half_sly
-			mb = dmd_yc-half_sly
-
-			print("append slit {}".format(i))
-			mir_left.append(ml)
-			mir_right.append(mr)
-			mir_top.append(mt)
-			mir_bottom.append(mb)
-			mir_x.append(dmd_xc)
-			mir_y.append(dmd_yc)
-
-			dx1 = dmd_xc - ml 
-			dx2 = mr - dmd_xc
-			dy1 = mt - dmd_yc
-			dy2 = dmd_yc - mb
-
-		
-			sl = DMDSlit(ra=ra,dec=dec, x=dmd_xc, y=dmd_yc, dx1=dx1, dx2=dx2, 
-					 dy1=dy1, dy2=dy2, slit_n=slit_num)
-			
-
-			dmd_slits.append(sl)
-			slit_num+=1
-		
-		if j-i >= 1: 
-			continue
-
-		j=i+1
-
-
-		while ((target_table.iloc[j]['slit_edges_left'] > target_table.iloc[i]['slit_edges_right']) & (j<len(target_table)-1)):
-								### '>' because images from Strasbourg decrease in RA from left to right.
-			print('skipping target', j)
-			#print(target_table.iloc[j]['slit_edges_left'], target_table.iloc[i]['slit_edges_right'])
-
-			j+=1
-		
-		print('accepting target', j)
-		print('\n')
-		good_index.append(j)
-
-
-		ra, dec = target_table.loc[j, ['ra', 'dec']].values
-		coords0 = SkyCoord(ra, dec,unit='deg')
-
-		dmd_xc, dmd_yc = sky2dmd(coords0, wcs) # center of target coords in dmd coords.
-
-		try:
-			half_slx = half_slit_xsize[j]
-			half_sly = half_slit_ysize[j]
-		except:
-			half_slx = half_slit_xsize
-			half_sly = half_slit_ysize
-		ml = dmd_xc-half_slx
-		mr = dmd_xc+half_slx
-		mt = dmd_yc+half_sly
-		mb = dmd_yc-half_sly
-
-		print("append slit {}".format(j))
-		mir_left.append(ml)
-		mir_right.append(mr)
-		mir_top.append(mt)
-		mir_bottom.append(mb)
-		mir_x.append(dmd_xc)
-		mir_y.append(dmd_yc)
-		
-
-		dx1 = dmd_xc - ml 
-		dx2 = mr - dmd_xc
-		dy1 = mt - dmd_yc
-		dy2 = dmd_yc - mb
-
-
-	
-		sl = DMDSlit(ra=ra,dec=dec, x=dmd_xc, y=dmd_yc, dx1=dx1, dx2=dx2, 
-				 dy1=dy1, dy2=dy2, slit_n=slit_num)
-		
-
-
-
-		dmd_slits.append(sl)
-		slit_num+=1
-		
-	dx1 = np.asarray(mir_x)-np.asarray(mir_left)
-	dx2 = np.asarray(mir_right)-np.asarray(mir_x)
-	dy1 = np.asarray(mir_top)-np.asarray(mir_y)
-	dy2 = np.asarray(mir_y)-np.asarray(mir_bottom)
-
-	pcols = ["target", "ra", "dec", "x", "y", "dx1", "dy1", "dx2", "dy2"]
-	pdata = np.vstack((target_table.loc[good_index, 'DESIGNATION'].values,
-					  target_table.loc[good_index, 'ra'].values, target_table.loc[good_index, 'dec'].values,
-					  np.asarray(mir_x), np.asarray(mir_y), dx1, dy1, dx2, dy2)).T
-
-
-	pattern_table = pd.DataFrame(data=pdata, columns=pcols)
-
-	return pattern_table, dmd_slits, good_index

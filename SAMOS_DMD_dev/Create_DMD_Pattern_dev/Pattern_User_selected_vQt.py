@@ -130,14 +130,15 @@ class FitsViewer(QtGui.QMainWindow):
         canvas.register_for_cursor_drawing(fi)
         canvas.add_callback('draw-event', self.draw_cb)
         canvas.set_draw_mode('draw')
-        #canvas.add_callback('enter',self.zoom_cb)
+        canvas.add_callback('pick-up', self.source_click_event)
+        
         canvas.set_surface(fi)
         canvas.ui_set_active(True)
         self.canvas = canvas
 
         # add our new canvas to viewers default canvas
         fi.get_canvas().add(canvas)
-
+        
         self.drawtypes = canvas.get_drawtypes()
         self.drawtypes.sort()
 
@@ -157,11 +158,15 @@ class FitsViewer(QtGui.QMainWindow):
         vbox.setSpacing(1)
         vbox.addWidget(w, stretch=1)
         
-        
 
         self.readout = QtGui.QLabel("")
         vbox.addWidget(self.readout, stretch=0,
                        alignment=QtCore.Qt.AlignCenter)
+        
+        wadd_slit = QtGui.QPushButton("Add Slit")
+        wadd_slit.clicked.connect(self.add_slit)
+        wadd_slit.setFixedWidth(150)
+        vbox.addWidget(wadd_slit, stretch=0)
         
         save_pat_hbox = QtGui.QHBoxLayout()
         save_pat_hbox.setContentsMargins(QtCore.QMargins(0, 0, 0, 0))
@@ -268,28 +273,13 @@ class FitsViewer(QtGui.QMainWindow):
 
         
         self.zoom_vbox = zoom_vbox
-        main_layout.addLayout(zoom_vbox,0,2)
+        #main_layout.addLayout(zoom_vbox,0,2)
         
-        wadd_slit = QtGui.QPushButton("Add Slit")
-        wadd_slit.clicked.connect(self.add_slit)
-        zoom_vbox.addWidget(wadd_slit)
+        #wadd_slit = QtGui.QPushButton("Add Slit")
+        #wadd_slit.clicked.connect(self.add_slit)
+        #zoom_vbox.addWidget(wadd_slit)
         
-        
-        
-        zoomfig = Figure(figsize=(5.5,5.5),dpi=100,tight_layout=True,frameon=False,
-                         facecolor='black',constrained_layout=True)
-        zoomax = zoomfig.add_axes([0,0,1,1])
-        zoomfig.patch.set_facecolor("black")
-        zoomfig.patch.set_alpha(0)
-        zoomax.patch.set_alpha(0)
-        
-        zoomax.tick_params(left=False, labelleft=False, bottom=False, labelbottom=False)
-        zoomcanvas = FigureCanvas(zoomfig)
-        zoomcanvas.setFixedWidth(350)
-        zoomcanvas.setFixedHeight(350)
-        self.zoomcanvas = zoomcanvas
-        self.zoomax = zoomax
-        #main_layout.addWidget(zoomcanvas,0,1)
+
 # =============================================================================
 #         
 #  #    Readout section for Region file
@@ -551,7 +541,10 @@ class FitsViewer(QtGui.QMainWindow):
         text = text_pix + text_coords + text_mir
         self.readout.setText(text)
 
-
+    def source_click_event(self):
+        
+        
+        print("clicked, not drawn")
 
     def zoom_cb(self, obj):
         
@@ -624,13 +617,13 @@ class FitsViewer(QtGui.QMainWindow):
         
         ### get position in main data coordinates ###
         
-        self.main_xc = self.xmincut+regsources.loc[0,'xcentroid']
-        self.main_yc = self.ymincut+regsources.loc[0,'ycentroid']
+        main_xc = self.xmincut+regsources.loc[0,'xcentroid']
+        main_yc = self.ymincut+regsources.loc[0,'ycentroid']
+        self.main_xc = main_xc
+        self.main_yc = main_yc
         
-       
         
-        
-        print("centroid in main data: {}, {}".format(self.main_xc,self.main_yc))
+        print("centroid in main data: {}, {}".format(main_xc,main_yc))
         #print(positions)
         #apertures = CircularAperture(positions, r=4.)
         #print(apertures)
@@ -665,18 +658,18 @@ class FitsViewer(QtGui.QMainWindow):
        
         #rectangle object .get_bbox() returns ((x0,y0), (x0,y1), (x1,y1), (x1,y0)), starting from
         #the lower left and proceeding clockwise
-        x0,y0 = self.zobj.get_bbox()[0]
-        x1,y1 = self.zobj.get_bbox()[2]
+        x0,y0 = self.main_canvas_add_reg.get_bbox()[0]
+        x1,y1 = self.main_canvas_add_reg.get_bbox()[2]
         
         
         slit_width = np.abs(x1-x0)
         slit_height = np.abs(y1-y0)
-        main_canvas_slit_rect =  RectanglePixelRegion(PixCoord(self.main_xc,self.main_yc),
-                                            width=slit_width,height=slit_height)
-        main_canvas_add_reg = apreg.add_region(canvas=self.canvas,r=main_canvas_slit_rect)
+        print(self.main_xc, self.main_yc)
         
-        self.SlitObjectList.append(main_canvas_slit_rect)
-        self.main_canvas_slit_rect = main_canvas_slit_rect
+        self.SlitObjectList.append(self.main_canvas_add_reg)
+        
+        from ginga.canvas.types.layer import CompoundObject
+        self.CompoundSlitObjs = CompoundObject(self.SlitObjectList)
         
 
         
@@ -781,7 +774,11 @@ class FitsViewer(QtGui.QMainWindow):
         
         self.canvas.delete_object(self.canvas_reg_box)
         self.read_region_file()
+    
+    def delete_selected_obj(self, obj):
         
+        self.canvas.delete_object(obj)
+    
 
     def draw_cb(self, canvas, tag):
         
@@ -791,19 +788,97 @@ class FitsViewer(QtGui.QMainWindow):
             pass
         
         obj = canvas.get_object_by_tag(tag)
+        obj.pickable = True
         obj.add_callback('pick-down', self.pick_cb, 'down')
-        obj.add_callback('pick-up', self.pick_cb, 'up')
+        #obj.add_callback('pick-up', self.pick_cb, 'up')
         obj.add_callback('pick-move', self.pick_cb, 'move')
         #obj.add_callback('pick-hover', self.pick_cb, 'hover')
         obj.add_callback('pick-enter', self.pick_cb, 'enter')
         #obj.add_callback('pick-leave', self.pick_cb, 'leave')
-        #obj.add_callback('pick-key', self.detect_reg_sources, 'key')
-        obj.pickable = True
+        #obj.add_callback('pick-key', self.edit_cb, 'key')
         obj.add_callback('edited', self.edit_cb)
         
-        self.zoom_cb(obj)
+        self.get_center_source_from_draw(obj)
+        #self.zoom_cb(obj)
         
         self.obj = obj
+        
+    def get_center_source_from_draw(self, obj):
+        
+        upleft, loright = obj.get_data_points()
+        if all(upleft==loright):
+            
+            xmouse,ymouse = upleft
+            print("try center click", xmouse, ymouse)
+            x0 = xmouse-25
+            x1 = xmouse+25
+            y0 = ymouse-25
+            y1 = ymouse+25
+            
+        else:
+            x0,y1 = upleft
+            x1, y0 = loright
+            print(upleft, loright)
+            
+        
+        #self.canvas_reg_box = obj
+        
+        img_shape = self.AstroImage.as_hdu().data.shape
+
+        
+        x0 = int(np.floor(x0))
+        y0 = int(np.floor(y0))
+        x1 = int(np.ceil(x1))
+        y1 = int(np.ceil(y1))
+        
+        zoomim = AstroImage(self.AstroImage.cutout_data(x0,y0,x1,y1))
+        
+        self.zoom_fitsimage.set_image(zoomim)
+        
+        norm = simple_norm(zoomim.get_data(),stretch='log',max_percent=99, min_percent=1)
+        
+        mean, median, std = sigma_clipped_stats(zoomim.get_data(), sigma=2.0)
+        regsources = setup_slits.single_source_detector(zoomim.get_data(), fwhm=5, threshold=3*std)
+        self.regsources = regsources
+        print("trying")
+
+        
+        positions = np.transpose((regsources['xcentroid'], regsources['ycentroid']))
+        
+        ### get position in main data coordinates ###
+        
+        main_xc = x0+regsources.loc[0,'xcentroid']
+        main_yc = y0+regsources.loc[0,'ycentroid']
+        
+        reg_centroid_point = PointPixelRegion(center=PixCoord(main_xc,main_yc),
+                                             visual=RegionVisual(marker="x"),
+                                             )
+        
+        
+        #main_canvas_add_point_reg = apreg.add_region(canvas=self.canvas,r=reg_centroid_point)
+        #main_canvas_add_point_reg.add_callback('pick-key', self.delete_selected_obj, 'd')
+
+        data_slit_reg = RectanglePixelRegion(PixCoord(main_xc,
+                                    main_yc), 20, 10)
+        
+        self.main_canvas_slit_rect = data_slit_reg
+        
+        main_canvas_add_reg = apreg.add_region(canvas=self.canvas,r=data_slit_reg)
+        
+        
+        main_canvas_add_reg.pickable = True
+        main_canvas_add_reg.add_callback('pick-up',self.pick_cb, 'up')
+        self.main_canvas_add_reg = main_canvas_add_reg
+
+        
+        self.fitsimage.zoom_to(2)
+        self.fitsimage.set_pan(main_xc, main_yc)
+        self.canvas.delete_object(obj)
+        self.main_xc = main_xc
+        self.main_yc = main_yc
+        
+        
+        
         
     def zoom_draw_cb(self, canvas, tag):
         
@@ -833,7 +908,7 @@ class FitsViewer(QtGui.QMainWindow):
 
         #print(obj.get_data_points())
     def pick_cb(self, obj, canvas, event, pt, ptype):
-        print(obj)
+        #print(obj)
         self.logger.info("pick event '%s' with obj %s at (%.2f, %.2f)" % (
             ptype, obj.kind, pt[0], pt[1]))
         return True
@@ -841,6 +916,16 @@ class FitsViewer(QtGui.QMainWindow):
     def edit_cb(self, obj):
         self.logger.info("object %s has been edited" % (obj.kind))
         self.obj = obj
+        upleft, loright = obj.get_data_points()
+        x0,y1 = upleft
+        x1,y0 = loright
+        
+        new_width = int(np.ceil(np.abs(x1-x0)))
+        new_height = int(np.ceil(np.abs(y1-y0)))
+        
+        self.main_canvas_slit_rect.width = new_width
+        self.main_canvas_slit_rect.height = new_height
+        print(self.main_canvas_slit_rect.width)
         #self.zoom_cb(obj)
         return True
     

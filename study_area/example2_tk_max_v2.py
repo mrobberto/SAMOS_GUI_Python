@@ -18,7 +18,6 @@ from ginga import colors
 from ginga.util.ap_region import astropy_region_to_ginga_canvas_object as r2g
 from ginga.util.ap_region import ginga_canvas_object_to_astropy_region as g2r
 
-
 import tkinter as tk
 from tkinter import ttk
 
@@ -241,8 +240,7 @@ class FitsViewer(object):
     def load_file(self, filepath):
         image = load_data(filepath, logger=self.logger)
         self.fitsimage.set_image(image)
-        self.root.title(filepath)
-        
+        self.root.title(filepath)       
         #THIS ALLOWS TO USE THE DATA PLANE ACROSS THE APPLICATION
         self.img = image
 

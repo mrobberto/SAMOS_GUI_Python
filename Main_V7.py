@@ -1212,9 +1212,33 @@ class SAMOS_Main(object):
         regs.write('my_regions.reg',overwrite=True)   #write to file
         
         #2, Extract the slits and convert pixel->DMD values
-         
-        #3 load the slit pattern
         
+        from SAMOS_DMD_dev.Class_DMD_dev import DigitalMicroMirrorDevice
+        dmd = DigitalMicroMirrorDevice()#config_id='pass') 
+        dmd.initialize()
+        dmd._open()
+        
+        #create initial DMD slit mask
+        slit_shape = np.ones((1080,2048)) # This is the size of the DC2K
+        
+        regions = Regions.read('my_regions.reg')
+        for i in range(len(regions)):
+            reg = regions[i]
+            corners = reg.corners
+            #convert CCD corners to DMD corners here
+            #TBD
+            dmd_corners = corners
+            dmd_corners[:][1] = corners[:][1]+500
+            ####   
+            x1 = round(dmd_corners[0][0])
+            y1 = round(dmd_corners[0][1])+400
+            x2 = round(dmd_corners[2][0])
+            y2 = round(dmd_corners[2][1])+400
+        #3 load the slit pattern   
+            slit_shape[x1:x2,y1:y2]=0
+        dmd.apply_shape(slit_shape)  
+        #dmd.apply_invert()   
+
         
         print("check")
         

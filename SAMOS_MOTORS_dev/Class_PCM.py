@@ -84,7 +84,7 @@ class Class_PCM():
 #            self.IP_Host = str((IP_dict['IP_PCM'])[:12]) #str((IP_dict['IP_Motors'])[:15])
 #            self.IP_Port = int((IP_dict['IP_PCM'])[13:]) #int((IP_dict['IP_Motors'])[16:])
             self.IP_Host = str((IP_dict['IP_Motors'])[:12]) #str((IP_dict['IP_Motors'])[:15])
-            self.IP_Port = int((IP_dict['IP_Motors'])[13:]) #int((IP_dict['IP_Motors'])[16:])
+            self.IP_Port = str((IP_dict['IP_Motors'])[13:]) #int((IP_dict['IP_Motors'])[16:])
             self.MOTORS_onoff = 1
         else: 
 #            self.MOTORS_onoff = 0

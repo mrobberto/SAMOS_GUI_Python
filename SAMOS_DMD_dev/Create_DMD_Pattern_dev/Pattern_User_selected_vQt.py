@@ -629,6 +629,7 @@ class FitsViewer(QtGui.QMainWindow):
         #print(apertures)
         #ap_points = apertures.plot(self.zoomax,color='magenta', lw=1.5, alpha=0.5)
         
+        
     def create_dmd_save_pattern(self):
         
         

@@ -68,15 +68,18 @@ def xml_parameter_pulldown_value(param_list,display_name,pulldown_name):
 				if(pulldown_name==node2.getElementsByTagName("display")[0].childNodes[0].data):
 					return node2.getElementsByTagName("value")[0].childNodes[0].data
 	return None
+
 def param_bounds(xml_str):
 	i=xml_str.index('<parameter>')
 	j=xml_str.index('</list>')
 	return (i,j)
+
 def main():
 	if 2<=len(sys.argv):
 		target=sys.argv[1]
 	else:
-		target='128.220.146.254:8900'
+		target= '172.16.0.245:80'
+                #'128.220.146.254:8900'
                 #'192.168.0.223'
         
 
@@ -90,7 +93,7 @@ def main():
 	# Combine the various XML parameter files
 	xml_str=get_url_as_string(target+'setup.xml')
 	if len(xml_str)<9:
-		exit()
+		sys.exit()
 	i,j=param_bounds(xml_str)
 	xml_hdr=xml_str[0:i]
 	xml_param=xml_str[i:j]

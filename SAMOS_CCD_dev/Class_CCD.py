@@ -13,6 +13,17 @@ import sys, tty, termios
 import math
 import pathlib
 
+import os
+import csv
+from pathlib import Path
+
+#define the local directory, absolute so it is not messed up when this is called
+path = Path(__file__).parent.absolute()
+local_dir = str(path.absolute())
+parent_dir = str(path.parent)   
+sys.path.append(parent_dir)
+
+
 
 class Class_Camera(object):
     
@@ -124,7 +135,8 @@ class Class_Camera(object):
     	if 2<=len(sys.argv):
     		target=sys.argv[1]
     	else:
-    		target='128.220.146.254:8900'
+    		target= '172.16.0.245:80'
+                    #'128.220.146.254:8900'
                     #'192.168.0.223'
             
     
@@ -263,7 +275,7 @@ class Class_Camera(object):
             
     		# write to file
             
-    		fileout = "/Users/robberto/Box/@Massimo/_Python/SAMOS_GUI_dev/fits_image/newimage.fit"
+    		fileout = parent_dir+"/fits_image/newimage.fit"
     		newFile = open(fileout, "wb")
     		newFile.write(data)
 

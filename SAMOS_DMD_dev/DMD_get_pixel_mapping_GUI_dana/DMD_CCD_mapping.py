@@ -5,8 +5,8 @@ Created on Tue Aug  2 12:49:02 2022
 
 @author: danakoeppe
 """
-
 import sys
+sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -36,7 +36,7 @@ plt.rcParams.update({'axes.titlesize': 15})
 
 
 
-from ginga.tkw.ImageViewTk import ImageViewCanvas
+#from ginga.tkw.ImageViewTk import ImageViewCanvas
 from ginga.misc import log
 from ginga.util.loader import load_data
 

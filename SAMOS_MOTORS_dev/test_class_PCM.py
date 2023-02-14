@@ -5,21 +5,24 @@ Created on Thu Jan  6 18:11:10 2022
 
 @author: robberto
 """
-
+import sys
 #from SAMOS_MOTORS_dev.Class_PCM import Class_PCM
 from Class_PCM import Class_PCM
 
 PCM = Class_PCM()
+if PCM.MOTORS_onoff == 0:
+    print('MOTORS NOT CONNECTED!!')
+    sys.exit()
 
 print('echo from server:')
 print(PCM.echo_client())
 
 # =============================================================================
-print('\npower off:')
-PCM.power_off()
+#print('\npower off:')
+#PCM.power_off()
 # 
 #print('\npower on:')
-#PCM.power_on()
+PCM.power_on()
 # 
 #print('\nsensor status:')
 #PCM.sensor_status("FW2")
@@ -47,7 +50,7 @@ PCM.power_off()
 #PCM.go_to_step("FW2","12345")
 # 
 #print('\n move to position A1: (46667)')
-#PCM.move_FW_pos_wheel("A1")
+PCM.move_FW_pos_wheel("A1")
 #PCM.move_FW_pos_wheel("A2")
 #PCM.move_FW_pos_wheel("A3") 
 #PCM.move_FW_pos_wheel("A4")

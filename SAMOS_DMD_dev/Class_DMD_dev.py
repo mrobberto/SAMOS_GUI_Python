@@ -9,6 +9,14 @@ import numpy as np
 import codecs
 #from catkit.interfaces.DeformableMirrorController import DeformableMirrorController
 
+#import SAMOS functions to handle IP addresses
+import sys
+from pathlib import Path
+#define the local directory, absolute so it is not messed up when this is called
+path = Path(__file__).parent.absolute()
+#local_dir = str(path.absolute())
+sys.path.append(os.path.join(path.parent,'SAMOS_system_dev'))
+from SAMOS_Functions import Class_SAMOS_Functions as SF
 
 #class DigitalMicroMirrorDevice(DeformableMirrorController):
 class DigitalMicroMirrorDevice():
@@ -39,9 +47,21 @@ class DigitalMicroMirrorDevice():
         Where to write out data and plots.
     """
     instrument_lib = socket    
+    
+
 
     def __init__(self):
-        self.params = {'Host': '128.220.146.254', 'Port': 8888}
+        #read the IP addresses
+        all_IPs = SF.read_IP_default()
+        #select the one for the DMD controller and split the ID and the port
+        i_columns=all_IPs['IP_DMD'].find(':')
+        
+        self.DMD_IP = all_IPs['IP_DMD'][0:i_columns]
+        self.DMD_port = int(all_IPs['IP_DMD'][i_columns+1:])
+        print(self.DMD_IP,self.DMD_port)
+#        self.params = {'Host': '128.220.146.254', 'Port': 8888}
+        self.params = {'Host': self.DMD_IP, 'Port': self.DMD_port}
+        print(self.params)
 #         
      
 # =============================================================================
@@ -51,14 +71,20 @@ class DigitalMicroMirrorDevice():
 # =============================================================================
     def initialize(self, config_id='DC2K', 
 #                   address='172.16.0.141',port=8888,# 
-                   address='128.220.146.254', port=8888,
+                   address='172.16.0.141', port=8888,
                    start_on_whiteout=False, max_diff=2211840, dmd_size=(1080,2048), 
                    display_type=32, dmd_data_path='.'):
+        
         """ Initial function for the DMD Controller."""
         hostname = socket.gethostname()
-        local_ip = socket.gethostbyname(hostname)
+        #for some reason the 
+        # local_ip = socket.gethostbyname(hostname)
+        #line does not t
+        local_ip = '172.16.1.108'
+        
+        print("hostname: %s"%(hostname))
         print("local IP: %s"%(local_ip))
-        print("SAMOS IP: %s"%(address))
+        print("DMD IP: %s"%(address))
         self.address = address
         
         self.port = port
@@ -266,17 +292,26 @@ class DigitalMicroMirrorDevice():
         
 
     def apply_invert(self):
-        """ Apply a full whiteout to the DMD. (All ones, all mirrors flipped.) """
+        """ Invert the last pattern on the DMD. (All ones, all mirrors flipped.) """
         
         message = ['~load_neg,slow\n']
 
         for m in message:
             self.send(m)
-
+        
         #self.current_dmd_shape = np.copy(self.shapes['blackout'][0])
         self.update_dmd_plot()
 
+    def apply_antinvert(self):
+        """ Undo the invert"""
+        
+        message = ['~load,slow\n']
 
+        for m in message:
+            self.send(m)
+        
+        #self.current_dmd_shape = np.copy(self.shapes['blackout'][0])
+        self.update_dmd_plot()
 
     def apply_current(self):
         """ Noop function to map the "current" shape of the DMD to a function. """
@@ -310,7 +345,7 @@ class DigitalMicroMirrorDevice():
             Required parameter from DeformableMirror class.
         """
         
-        self.update_dmd_plot(shape=dm_shape, plot_name='attempted_dmd_shape')
+        #self.update_dmd_plot(shape=dm_shape, plot_name='attempted_dmd_shape')
 
         if dm_shape.shape != self.dmd_size:
             raise IndexError(f"Given shape to apply to DMD is of size {dm_shape.shape}, while we expect the DMD to be of size {self.dmd_size}.")
@@ -456,16 +491,18 @@ class DigitalMicroMirrorDevice():
         else:
             print(f'Shape perfectly matches {pre_shape.__name__} preset.')
     
-    def update_dmd_plot(self, shape=None, plot_name='current_dm_state'):
+    def update_dmd_plot(self, shape=None, plot_name='current_dmd_state'):
         """ Consistent plotting method to write out DMD plot. """
         
         # No shape input means we plot out the current DMD shape.
         shape = shape if shape is not None else self.current_dmd_shape
         
         plt.clf()
-        plt.imshow(shape, vmin=0, vmax=1)
+        shape_rotated = np.rot90(shape, k=1, axes=(0, 1))
+        plt.imshow(shape_rotated, vmin=0, vmax=1)
         plt.colorbar()
-        plt.savefig(os.path.join(self.dmd_data_path, f'{plot_name}.png'))
+        plt.savefig("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        plt.close()  #needed to overwrite!
     
     def _build_message(self, data_length=2, command_type=0, row=0, column=0, data=None):
         """Function to build messages for the DMD controller. 
@@ -799,7 +836,7 @@ class DigitalMicroMirrorDevice():
             dm_shape[slit['x1']:slit['x2']+1,slit['y1']:slit['y2']+1] = 0
             
         
-        self.update_dmd_plot(shape=dm_shape, plot_name='attempted_dmd_shape')
+        #self.update_dmd_plot(shape=dm_shape, plot_name='attempted_dmd_shape')
 
         if dm_shape.shape != self.dmd_size:
             raise IndexError(f"Given shape to apply to DMD is of size {dm_shape.shape}, while we expect the DMD to be of size {self.dmd_size}.")

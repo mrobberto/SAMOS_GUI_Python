@@ -26,7 +26,10 @@ local_dir = str(path.absolute())
 parent_dir = str(path.parent)   
 sys.path.append(parent_dir)
 
-
+# =============================================================================
+# Import classes
+# 
+# =============================================================================
 from  SAMOS_MOTORS_dev.Class_PCM import Class_PCM 
 PCM = Class_PCM()
 
@@ -34,7 +37,7 @@ PCM = Class_PCM()
 from  SAMOS_CCD_dev.Class_CCD import Class_Camera
 params = {'Exposure Time':0,'CCD Temperature':2300,'Trigger Mode': 4}
         #Trigger Mode = 4: light
-        #Trigger Mode = 4: dark
+        #Trigger Mode = 5: dark
 CCD = Class_Camera(dict_params=params)
 
 #Import the DMD class
@@ -43,23 +46,7 @@ dmd = DigitalMicroMirrorDevice()#config_id='pass')
 
 
 
-# this will make your package available on your pythonpath
 # =============================================================================
-#from parent_dir.SAMOS_MOTORS_dev.Class_PCM import Class_PCM
-# 
-#  PCM = Class_PCM()
-# 
-#  #print('echo from server:')
-#  #PCM.echo_client()
-# 
-# =============================================================================
-
-#add the path of the other directoris to make the classes visible...
-#1. system file
-#SF_path = str(path.absolute())+"/../system_files"
-#os.sys.path.append(SF_path)
-
-
 #Here, we are creating our class, Window, and inheriting from the Frame class. 
 #Frame is a class from the tkinter module. (see Lib/tkinter/__init__)
 
@@ -83,15 +70,7 @@ class Config(tk.Frame):
 #        parent_dir = str(path.parent)      
  
         self.cwd = local_dir       
-        self.parent_dir = parent_dir     
-        
-#    def init_Config(self):
-#       self.init_Config()
-#        self.load_IP_user()
-#        self.load_dir_user()
-#The above is really all we need to do to get a window instance started.
-
-     
+        self.parent_dir = parent_dir        
        
         
     #Creation of init_window
@@ -208,8 +187,16 @@ class Config(tk.Frame):
 #         
 # =============================================================================
         self.labelframe_Servers =  tk.LabelFrame(self.frame0l, text="Servers", font=("Arial", 24))
-        self.labelframe_Servers.place(x=4, y=234, anchor="nw", width=592, height=175)
+        self.labelframe_Servers.place(x=4, y=234, anchor="nw", width=592, height=200)
         
+
+        self.inoutvar=tk.StringVar()
+        self.inoutvar.set("outside")
+        r1 = tk.Radiobutton(self.labelframe_Servers, text='Inside', variable=self.inoutvar, value='inside', command=self.load_IP_default)
+        r1.place(x=20,y=0)
+        r2 = tk.Radiobutton(self.labelframe_Servers, text='Outside', variable=self.inoutvar, value='outside', command=self.load_IP_default)
+        r2.place(x=150,y=0)
+
 # 1. Server addresses
 # 1.1 SAMOS Motors
 # 1.2 SAMOS CCD
@@ -217,38 +204,38 @@ class Config(tk.Frame):
 # 1.4 SOAR Telescope
 # 1.5 SOAR SAMI
         Label1 = tk.Label(self.labelframe_Servers, text = "SAMOS Motors")
-        Label1.place(x=4, y=10)
+        Label1.place(x=4, y=35)
         Label2 = tk.Label(self.labelframe_Servers, text = "CCD")
-        Label2.place(x=4, y=35)
+        Label2.place(x=4, y=60)
         Label3 = tk.Label(self.labelframe_Servers, text = "DMD")
-        Label3.place(x=4, y=60)
+        Label3.place(x=4, y=85)
         Label1 = tk.Label(self.labelframe_Servers, text = "SOAR Telescope")
-        Label1.place(x=4, y=85)
+        Label1.place(x=4, y=110)
         Label2 = tk.Label(self.labelframe_Servers, text = "SOAR SAMI")
-        Label2.place(x=4, y=110)
+        Label2.place(x=4, y=135)
         
         #print(self.IP_dict)
         
         self.IP_Motors = tk.StringVar()
         self.IP_Motors.set(self.IP_dict['IP_Motors'])
         Entry_IP_Motors = tk.Entry(self.labelframe_Servers,width=20, textvariable = self.IP_Motors)
-        Entry_IP_Motors.place(x=120, y=10)
+        Entry_IP_Motors.place(x=120, y=35)
         self.IP_CCD= tk.StringVar()
         self.IP_CCD.set(self.IP_dict['IP_CCD'])
         Entry2 = tk.Entry(self.labelframe_Servers,width=20, textvariable = self.IP_CCD)
-        Entry2.place(x=120, y=35)
+        Entry2.place(x=120, y=60)
         self.IP_DMD= tk.StringVar()
         self.IP_DMD.set(self.IP_dict['IP_DMD'])
         Entry3 = tk.Entry(self.labelframe_Servers,width=20, textvariable = self.IP_DMD)
-        Entry3.place(x=120, y=60)
+        Entry3.place(x=120, y=85)
         self.IP_SOAR = tk.StringVar()
         self.IP_SOAR.set(self.IP_dict['IP_SOAR'])
         Entry4 = tk.Entry(self.labelframe_Servers,width=20, textvariable = self.IP_SOAR)
-        Entry4.place(x=120, y=85)
+        Entry4.place(x=120, y=110)
         self.IP_SAMI = tk.StringVar()
         self.IP_SAMI.set(self.IP_dict['IP_SAMI'])
         Entry5 = tk.Entry(self.labelframe_Servers,width=20, textvariable = self.IP_SAMI)
-        Entry5.place(x=120, y=110)
+        Entry5.place(x=120, y=135)
 
  #       self.Image_on = Image.open("/Users/robberto/Box/@Massimo/_Python/SAMOS_GUI_dev/SAMOS_CONFIG_dev/Images/on.jpg")
 #        self.python_image = ImageTk.PhotoImage(self.image)
@@ -257,23 +244,23 @@ class Config(tk.Frame):
 #        ttk.Label(self,image=self.Image_on).pack()
          # Create A Button
         self.IP_Motors_on_button = tk.Button(self.labelframe_Servers, image = self.Image_off, bd = 0, command = self.Motors_switch)
-        self.IP_Motors_on_button.place(x=320,y=14) 
+        self.IP_Motors_on_button.place(x=320,y=39) 
         self.CCD_on_button = tk.Button(self.labelframe_Servers, image = self.Image_off, bd = 0, command = self.CCD_switch)
-        self.CCD_on_button.place(x=320,y=39) 
+        self.CCD_on_button.place(x=320,y=64) 
         self.DMD_on_button = tk.Button(self.labelframe_Servers, image = self.Image_off, bd = 0, command = self.DMD_switch)
-        self.DMD_on_button.place(x=320,y=64) 
+        self.DMD_on_button.place(x=320,y=89) 
         self.SOAR_Tel_on_button = tk.Button(self.labelframe_Servers, image = self.Image_off, bd = 0, command = self.SOAR_switch)
-        self.SOAR_Tel_on_button.place(x=320,y=89) 
+        self.SOAR_Tel_on_button.place(x=320,y=113) 
         self.SOAR_SAMI_on_button = tk.Button(self.labelframe_Servers, image = self.Image_off, bd = 0, command = self.SAMI_switch)
-        self.SOAR_SAMI_on_button.place(x=320,y=113) 
+        self.SOAR_SAMI_on_button.place(x=320,y=139) 
 
         
-        Button_IP_Load_Current = tk.Button(self.labelframe_Servers, text ="Load Current", relief="raised", command = self.load_IP_user, font=("Arial", 24))
-        Button_IP_Load_Current.place(x=380, y=10)
-        Button_IP_Save_Current = tk.Button(self.labelframe_Servers, text ="Save Current", relief="raised", command = self.save_IP_user, font=("Arial", 24))
-        Button_IP_Save_Current.place(x=380, y=50)
-        Button_IP_Load_Default = tk.Button(self.labelframe_Servers, text ="Load Default", relief="raised", command = self.load_IP_default, font=("Arial", 24))
-        Button_IP_Load_Default.place(x=380, y=90)
+       # Button_IP_Load_Current = tk.Button(self.labelframe_Servers, text ="Load Current", relief="raised", command = self.load_IP_user, font=("Arial", 24))
+       # Button_IP_Load_Current.place(x=380, y=10)
+       # Button_IP_Save_Current = tk.Button(self.labelframe_Servers, text ="Save Current", relief="raised", command = self.save_IP_user, font=("Arial", 24))
+       # Button_IP_Save_Current.place(x=380, y=50)
+       # Button_IP_Load_Default = tk.Button(self.labelframe_Servers, text ="Load Default", relief="raised", command = self.load_IP_default, font=("Arial", 24))
+       # Button_IP_Load_Default.place(x=380, y=90)
  
 # =============================================================================
 #         
@@ -303,11 +290,10 @@ class Config(tk.Frame):
 #         
 # =============================================================================
         self.Exit_frame =  tk.Frame(self.frame0l)
-        self.Exit_frame.place(x=4, y=415, anchor="nw", width=592, height=78)
+        self.Exit_frame.place(x=4, y=440, anchor="nw", width=592, height=48)
         Exit_Button = tk.Button(self.Exit_frame, text ="Exit", relief="raised", command = self.client_exit, font=("Arial",24)) 
-        Exit_Button.place(x=230, y=20)
+        Exit_Button.place(x=230, y=5)
 
- 
 # =============================================================================
 # =============================================================================
 #         
@@ -315,9 +301,6 @@ class Config(tk.Frame):
 #         
 # =============================================================================
 # =============================================================================
-
-  
-
 
     def load_dir_default(self):
         dict_from_csv = {}
@@ -347,6 +330,7 @@ class Config(tk.Frame):
 #       self.__init__()
 
         return self.dir_dict
+        
 
     def load_dir_user(self):
         dict_from_csv = {}
@@ -403,11 +387,19 @@ class Config(tk.Frame):
            
 
     def load_IP_user(self):
-        with open(self.parent_dir+"/SAMOS_system_dev/IP_addresses_user.csv", mode='r') as inp:
+        local_path = self.parent_dir+"/SAMOS_system_dev/"
+        if self.inoutvar.get() == 'inside':
+            ip_file = local_path+"IP_addresses_default_inside.csv"
+        else:
+            ip_file = local_path+"IP_addresses_default_outside.csv"
+        ip_file_default = local_path + "IP_addresses_default.csv"    
+        os.system('cp {} {}'.format(ip_file,ip_file_default))  
+        
+        with open(ip_file, mode='r') as inp:
             reader = csv.reader(inp)
             dict_from_csv = {rows[0]:rows[1] for rows in reader}
 
-        self.IP_dict['IP_MOTORS']=dict_from_csv['IP_Motors']
+        self.IP_dict['IP_Motors']=dict_from_csv['IP_Motors']
         self.IP_dict['IP_CCD']=dict_from_csv['IP_CCD']
         self.IP_dict['IP_DMD']=dict_from_csv['IP_DMD']
         self.IP_dict['IP_SOAR']=dict_from_csv['IP_SOAR']
@@ -430,7 +422,7 @@ class Config(tk.Frame):
 
 
 # =============================================================================
-#         self.IP_dict['IP_MOTORS']=dict_from_csv['IP_Motors']
+#         self.IP_dict['IP_Motors']=dict_from_csv['IP_Motors']
 #         self.IP_dict['IP_CCD']=dict_from_csv['IP_CCD']
 #         self.IP_dict['IP_DMD']=dict_from_csv['IP_DMD']
 #         self.IP_dict['IP_SOAR']=dict_from_csv['IP_SOAR']
@@ -438,8 +430,16 @@ class Config(tk.Frame):
 #         
 # =============================================================================
 # open file for writing, "w" is writing
-        w = csv.writer(open(self.parent_dir+"/SAMOS_system_dev/IP_addresses_user.csv", "w"))
-        print(self.parent_dir+"./SAMOS_system_dev/IP_addresses_user.csv")
+        local_path = self.parent_dir+"/SAMOS_system_dev/"
+        if self.inoutvar.get() == 'inside':
+            ip_file = local_path+"IP_addresses_default_inside.csv"
+        else:
+            ip_file = local_path+"IP_addresses_default_outside.csv"
+        ip_file_default = local_path + "IP_addresses_default.csv"    
+        os.system('cp {} {}'.format(ip_file,ip_file_default))  
+        
+        w = csv.writer(open(ip_file, "w"))
+        print(ip_file)
 
         # loop over dictionary keys and values
         for key, val in self.IP_dict.items():
@@ -452,13 +452,21 @@ class Config(tk.Frame):
         
         
     def load_IP_default(self):
-        dict_from_csv = {}
+        
+        local_path = self.parent_dir+"/SAMOS_system_dev/"
+        if self.inoutvar.get() == 'inside':
+            ip_file = local_path+"IP_addresses_default_inside.csv"
+        else:
+            ip_file = local_path+"IP_addresses_default_outside.csv"
+        ip_file_default = local_path + "IP_addresses_default.csv"    
+        os.system('cp {} {}'.format(ip_file,ip_file_default))  
 
-        with open(self.parent_dir+"/SAMOS_system_dev/IP_addresses_default.csv", mode='r') as inp:
+        dict_from_csv = {}      
+        with open(ip_file, mode='r') as inp:
             reader = csv.reader(inp)
             dict_from_csv = {rows[0]:rows[1] for rows in reader}
 
-        self.IP_dict['IP_MOTORS']=dict_from_csv['IP_Motors']
+        self.IP_dict['IP_Motors']=dict_from_csv['IP_Motors']
         self.IP_dict['IP_CCD']=dict_from_csv['IP_CCD']
         self.IP_dict['IP_DMD']=dict_from_csv['IP_DMD']
         self.IP_dict['IP_SOAR']=dict_from_csv['IP_SOAR']
@@ -470,7 +478,8 @@ class Config(tk.Frame):
         self.IP_SOAR.set(dict_from_csv['IP_SOAR'])
         self.IP_SAMI.set(dict_from_csv['IP_SAMI']) 
         
-        self.IP_echo()
+        if PCM.MOTORS_onoff == 1:
+            self.IP_echo()
         
 
 
@@ -487,37 +496,45 @@ class Config(tk.Frame):
 
     def IP_echo(self):                   
 #MOTORS alive?
+        print("\n Checking Motors status")
         answer = PCM.echo_client()
-        print("\n Motors return:>", answer,"<")
+        #print("\n Motors return:>", answer,"<")
         if answer != 0:
+            print("Motors are on")
             self.IP_Motors_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_Motors'] = True   
         else:
-           self.IP_Motors_on_button.config(image = self.Image_off)
-           self.IP_status_dict['IP_Motors'] = False    
+            print("Motors are off")
+            self.IP_Motors_on_button.config(image = self.Image_off)
+            self.IP_status_dict['IP_Motors'] = False    
                     
 
 #CCD alive?
+        print("\n Checking CCD status")
         url_name = "http://"+self.IP_dict['IP_CCD']+'/'
         answer = (CCD.get_url_as_string(url_name))[:6]   #expect <HTML>
-        print("\nCCD returns:>", answer,"<")
+        print("CCD returns:>", answer,"<")
         if str(answer) == '<HTML>':
+            print("CCD is on")
             self.CCD_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_CCD'] = True   
         else:
+            print("CCD is off")
             self.CCD_on_button.config(image = self.Image_off)
             self.IP_status_dict['IP_CCD'] = False  
             
 #DMD alive?
-        
+        print("\n Checking DMD status")
         dmd.initialize()
         answer = dmd._open()
         if answer != 0:
+            print("\n DMD is on")
             self.DMD_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_DMD'] = True   
         else:
-           self.DMD_on_button.config(image = self.Image_off)
-           self.IP_status_dict['IP_DMD'] = False    
+            print("\n DMD is off")
+            self.DMD_on_button.config(image = self.Image_off)
+            self.IP_status_dict['IP_DMD'] = False    
 
 
         self.save_IP_status()    
@@ -529,9 +546,14 @@ class Config(tk.Frame):
         if self.IP_status_dict['IP_Motors']:
             self.IP_Motors_on_button.config(image = self.Image_off)
             self.IP_status_dict['IP_Motors'] = False
+            PCM.power_off()
         else:           
             self.IP_Motors_on_button.config(image = self.Image_on)
-            self.IP_status_dict['IP_Motors'] = True            
+            self.IP_status_dict['IP_Motors'] = True
+#            SF.read_IP_initial_status()
+            self.save_IP_status()
+            PCM.IP_host = self.IP_Motors
+            PCM.power_on()
         self.save_IP_status()    
         print(self.IP_status_dict)        
     
@@ -544,6 +566,7 @@ class Config(tk.Frame):
             self.CCD_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_CCD'] = True        
         self.save_IP_status()    
+        print(self.IP_status_dict)        
     
 
     def DMD_switch(self):         
@@ -555,6 +578,7 @@ class Config(tk.Frame):
             self.DMD_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_DMD'] = True          
         self.save_IP_status()    
+        print(self.IP_status_dict)        
     
     def SOAR_switch(self):         
         # Determine is on or off
@@ -565,6 +589,7 @@ class Config(tk.Frame):
             self.SOAR_Tel_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_SOAR']= True            
         self.save_IP_status()    
+        print(self.IP_status_dict)        
 
     def SAMI_switch(self):         
         # Determine is on or off
@@ -575,6 +600,7 @@ class Config(tk.Frame):
             self.SOAR_SAMI_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_SAMI'] = True    
         self.save_IP_status()    
+        print(self.IP_status_dict)        
     
 
 # =============================================================================
@@ -591,7 +617,7 @@ class Config(tk.Frame):
 # 
 # =============================================================================
     def client_exit(self):
-        print("destroy")
+        print("complete")
         self.master.destroy() 
        
 

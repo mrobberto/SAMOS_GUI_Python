@@ -74,18 +74,26 @@ class Class_PCM():
     
 
     def __init__(self): 
-        IP_status_dict = SF.read_IP_status()
-        IP_dict = SF.read_IP_user()
-        print(IP_dict)
+        IP_status_dict = SF.read_IP_initial_status()
+#        IP_dict = SF.read_IP_user()
+        IP_dict = SF.read_IP_default()
+        print("IP_dict:",IP_dict)
         print(IP_status_dict)
-        if IP_status_dict['IP_Motors'] == 'True':
-            self.IP_Host = str((IP_dict['IP_PCM'])[:12]) #str((IP_dict['IP_Motors'])[:15])
-            self.IP_Port = int((IP_dict['IP_PCM'])[13:]) #int((IP_dict['IP_Motors'])[16:])
+        self.MOTORS_onoff = 0
+        if IP_status_dict['IP_Motors'] == 'False':#../0'True':
+#            self.IP_Host = str((IP_dict['IP_PCM'])[:12]) #str((IP_dict['IP_Motors'])[:15])
+#            self.IP_Port = int((IP_dict['IP_PCM'])[13:]) #int((IP_dict['IP_Motors'])[16:])
+            self.IP_Host = str((IP_dict['IP_Motors'])[:12]) #str((IP_dict['IP_Motors'])[:15])
+            self.IP_Port = str((IP_dict['IP_Motors'])[13:]) #int((IP_dict['IP_Motors'])[16:])
+            self.MOTORS_onoff = 1
         else: 
-            print('MOTORS NOT CONNECTED')
+#            self.MOTORS_onoff = 0
+            print('MOTORS NOT CONNECTED!!')
+            self.MOTORS_onoff = 0
+            return
  
-        self.params = {'Host': '128.220.146.254', 'Port': 8889}
-        #self.params = {'Host': '172.16.0.128', 'Port': 1000}
+#        self.params = {'Host': '128.220.146.254', 'Port': 8889}
+        self.params = {'Host': '172.16.0.128', 'Port': 1000}
     #       cwd = os.getcwd()
  #       dir_motors = '/SAMOS_MOTORS_dev'
         data = ascii.read(local_dir+'/IDG_Filter_positions.txt')
@@ -204,6 +212,8 @@ class Class_PCM():
     # To talk to the motor controller, you will first need to power the controller power port.
     # The command for that is “~se,1,on\n” This means set enable for power port 1 on.
             s.sendall(b'~se,all,off\n')
+#            s.sendall(b'~se,ch5,off\n')
+#            s.sendall(b'~se,ch5,on\n')
             data = s.recv(1024)
 
         print('Received', repr(data))

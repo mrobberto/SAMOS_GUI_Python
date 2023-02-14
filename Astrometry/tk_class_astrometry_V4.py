@@ -6,7 +6,10 @@ Created on Thu Dec 30 10:49:37 2021
 @author: robberto
 """
 import tkinter as tk
-from ginga.tkw.ImageViewTk import ImageViewCanvas
+from ginga.tkw.ImageViewTk import CanvasView
+from ginga.canvas.CanvasObject import get_canvas_types
+
+#from ginga.tkw.ImageViewTk import ImageViewCanvas
 from ginga.AstroImage import AstroImage
 from ginga.util import io_fits
 from ginga.util.loader import load_data

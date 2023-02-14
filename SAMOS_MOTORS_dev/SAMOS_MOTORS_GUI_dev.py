@@ -114,7 +114,10 @@ class Window(Toplevel):
 
         r3 = Radiobutton(self, text='GR_B', variable=self.r1_v, value=4, command=self.Choose_FWorGR)
         r3.place(x=190,y=70) 
-
+   
+        #start with FW1 
+        self.r1_v.set(1)
+        self.Choose_FWorGR()
 # =============================================================================
 #       home
 # =============================================================================
@@ -303,7 +306,8 @@ class Window(Toplevel):
 
     def FW_initialize(self):       
         print('Initialize:')
-        t = PCM.initialize_filter_wheel()
+        t = PCM.initialize_filter_wheel("FW1")
+        t = PCM.initialize_filter_wheel("FW2")
         self.Echo_String.set(t)
         print(t)
 
@@ -366,19 +370,21 @@ class Window(Toplevel):
     def client_exit(self):
         print("destroy")
         self.destroy() 
-# =============================================================================
-#         
+    
+'''
 # #Root window created. 
 # #Here, that would be the only window, but you can later have windows within windows.
-# root = Tk()
+root = Tk()
 # 
 # #size of the window
-# root.geometry("400x330")
+root.geometry("400x330")
 # 
 # #Then we actually create the instance.
-# app = Window(root)    
+app = Window(root)    
 # 
 # #Finally, show it and begin the mainloop.
-# root.mainloop()
-# 
-# =============================================================================
+root.mainloop()
+'''
+if __name__ == "__main__":
+    testObj = Window()
+    testObj.mainloop()

@@ -869,7 +869,7 @@ class GUI_CCD(tk.Toplevel):     #the GUI_CCD class inherits from the tk.Toplevel
 
 #Root window created. 
 #Here, that would be the only window, but you can later have windows within windows.
-root = GUI_CCD()
+#root = GUI_CCD()
 
 #size of the window
 #root.geometry("400x330")
@@ -878,6 +878,6 @@ root = GUI_CCD()
 #app = Tk.Window(root)    
 
 #Finally, show it and begin the mainloop.
-root.mainloop()
+#root.mainloop()
 
 

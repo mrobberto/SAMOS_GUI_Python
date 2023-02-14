@@ -672,7 +672,7 @@ class FitsViewer(QtGui.QMainWindow):
         self.CompoundSlitObjs = CompoundObject(self.SlitObjectList)
         
 
-        
+        """
         if not os.path.exists("test_regions.reg"):
              # check to see if region file has already been made
              test_regfile = open("test_regions.reg",'w')
@@ -689,7 +689,7 @@ class FitsViewer(QtGui.QMainWindow):
         else:
              # if file exists, append to it
              test_regfile = open("test_regions.reg","a")
-     
+        """
             
         # x,y,width,height,angle
         xc = np.round(self.main_xc,3)
@@ -703,10 +703,10 @@ class FitsViewer(QtGui.QMainWindow):
         y0 = yc-(width/2.)
         y1 = yc+(width/2.)
         
-        reg_text = "box({},{},{},{},{}) \n".format(xc, yc, width, height, angle)
-        test_regfile.write(reg_text)
+        #reg_text = "box({},{},{},{},{}) \n".format(xc, yc, width, height, angle)
+        #test_regfile.write(reg_text)
         
-        test_regfile.close()
+        #test_regfile.close()
         
         dmd_x, dmd_y = self.ccd2dmd_wcs.all_pix2world(xc+1,yc+1,0)
         dmd_x, dmd_y = dmd_x*3600, dmd_y*3600
@@ -772,7 +772,7 @@ class FitsViewer(QtGui.QMainWindow):
         print("added")
         
         
-        self.canvas.delete_object(self.canvas_reg_box)
+        #self.canvas.delete_object(self.canvas_reg_box)
         self.read_region_file()
     
     def delete_selected_obj(self, obj):

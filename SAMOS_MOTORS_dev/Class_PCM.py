@@ -83,8 +83,9 @@ class Class_PCM():
         if IP_status_dict['IP_Motors'] == 'False':#../0'True':
 #            self.IP_Host = str((IP_dict['IP_PCM'])[:12]) #str((IP_dict['IP_Motors'])[:15])
 #            self.IP_Port = int((IP_dict['IP_PCM'])[13:]) #int((IP_dict['IP_Motors'])[16:])
-            self.IP_Host = str((IP_dict['IP_Motors'])[:12]) #str((IP_dict['IP_Motors'])[:15])
-            self.IP_Port = str((IP_dict['IP_Motors'])[13:]) #int((IP_dict['IP_Motors'])[16:])
+            self.IP_Host = IP_dict['IP_Motors'].split(':')[0]#[:12]) #str((IP_dict['IP_Motors'])[:15])
+            print("motors ip",IP_dict['IP_Motors'])
+            self.IP_Port = int(IP_dict['IP_Motors'].split(':')[1])#[13:])) #int((IP_dict['IP_Motors'])[16:])
             self.MOTORS_onoff = 1
         else: 
 #            self.MOTORS_onoff = 0
@@ -94,6 +95,8 @@ class Class_PCM():
  
 #        self.params = {'Host': '128.220.146.254', 'Port': 8889}
         self.params = {'Host': '172.16.0.128', 'Port': 1000}
+                
+
     #       cwd = os.getcwd()
  #       dir_motors = '/SAMOS_MOTORS_dev'
         data = ascii.read(local_dir+'/IDG_Filter_positions.txt')

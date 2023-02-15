@@ -162,15 +162,25 @@ class Class_PCM():
         PORT = self.IP_Port#self.params['Port']
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            """
             s.connect((HOST, PORT))
-        #    s.sendall(b'Hello, world')
-        #    s.sendall(b'~Hello, world\n')
-            s.sendall(b'~se,all,on\n')
-            data = s.recv(1024)
-
-        print('Received', repr(data))
-        return data
-
+                
+            #    s.sendall(b'Hello, world')
+            #    s.sendall(b'~Hello, world\n')
+                s.sendall(b'~se,all,on\n')
+                data = s.recv(1024)
+    
+            print('Received', repr(data))
+            return data
+            """    
+            try:
+                s.connect((HOST, PORT))
+                s.sendall(b'~se,all,on\n')
+                data = s.recv(1024)
+            except socket.error:
+                return("no connection")
+            finally:
+                s.close()
     # =============================================================================
     #
     # PCM_power_on

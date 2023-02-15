@@ -577,7 +577,8 @@ class SAMOS_Main(object):
         vbox.place(x=350, y=0, anchor="nw")#, width=500, height=800)
         #self.vb = vbox
 
-        canvas = tk.Canvas(vbox, bg="grey", height=514, width=522)
+#        canvas = tk.Canvas(vbox, bg="grey", height=514, width=522)
+        canvas = tk.Canvas(vbox, bg="grey", height=516, width=528)
         canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
         fi = CanvasView(logger) #=> ImageViewTk -- a backend for Ginga using a Tk canvas widget

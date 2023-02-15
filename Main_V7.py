@@ -577,7 +577,8 @@ class SAMOS_Main(object):
         vbox.place(x=350, y=0, anchor="nw")#, width=500, height=800)
         #self.vb = vbox
 
-        canvas = tk.Canvas(vbox, bg="grey", height=514, width=522)
+#        canvas = tk.Canvas(vbox, bg="grey", height=514, width=522)
+        canvas = tk.Canvas(vbox, bg="grey", height=516, width=528)
         canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
         fi = CanvasView(logger) #=> ImageViewTk -- a backend for Ginga using a Tk canvas widget
@@ -1222,18 +1223,27 @@ class SAMOS_Main(object):
         slit_shape = np.ones((1080,2048)) # This is the size of the DC2K
         
         regions = Regions.read('my_regions.reg')
+
+        from SAMOS_DMD_dev.CONVERT.CONVERT_class import CONVERT 
+        convert = CONVERT()
+
         for i in range(len(regions)):
             reg = regions[i]
             corners = reg.corners
             #convert CCD corners to DMD corners here
             #TBD
-            dmd_corners = corners
-            dmd_corners[:][1] = corners[:][1]+500
+            #dmd_corners=[] 
+            #for j in range(len(corners)):
+            x1,y1 = convert.CCD2DMD(corners[0][0], corners[0][1])
+            x1,y1 = int(np.floor(x1)), int(np.floor(y1))
+            x2,y2 = convert.CCD2DMD(corners[2][0], corners[2][1])
+            x2,y2 = int(np.ceil(x2)), int(np.ceil(y2))
+            #dmd_corners[:][1] = corners[:][1]+500
             ####   
-            x1 = round(dmd_corners[0][0])
-            y1 = round(dmd_corners[0][1])+400
-            x2 = round(dmd_corners[2][0])
-            y2 = round(dmd_corners[2][1])+400
+            #x1 = round(dmd_corners[0][0])
+            #y1 = round(dmd_corners[0][1])+400
+            #x2 = round(dmd_corners[2][0])
+            #y2 = round(dmd_corners[2][1])+400
         #3 load the slit pattern   
             slit_shape[x1:x2,y1:y2]=0
         dmd.apply_shape(slit_shape)  

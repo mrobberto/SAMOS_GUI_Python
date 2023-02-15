@@ -108,8 +108,14 @@ class DigitalMicroMirrorDevice():
 
         # Connection is reset every ~10 seconds
         instrument = self.instrument_lib.socket(self.instrument_lib.AF_INET, self.instrument_lib.SOCK_STREAM)
-        instrument.connect((self.address, self.port))
+#        instrument.connect((self.address, self.port))
 
+        try:
+            instrument.connect((self.address, self.port))
+        except:
+            print("no DMD")
+            return("no DMD")
+            
         # If we get this far, a connection has been successfully opened.
         # Set self.instrument so that we can close if anything here subsequently fails.
         self.instrument = instrument

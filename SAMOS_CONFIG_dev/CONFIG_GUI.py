@@ -301,11 +301,19 @@ class Config(tk.Frame):
 #         
 # =============================================================================
 # =============================================================================
+    def startup(self):
+        self.IP_echo()
+        print("started")
+        
+        
+        
 
     def load_dir_default(self):
         dict_from_csv = {}
 
-        with open(self.parent_dir+"/SAMOS_system_dev/dirlist_default.csv", mode='r') as inp:
+
+        #with open(self.parent_dir+"/SAMOS_system_dev/dirlist_default.csv", mode='r') as inp:
+        with open(self.parent_dir + self.dir_dict['dir_system'] +"/SAMOS_system_dev/dirlist_default.csv", mode='r') as inp:
             reader = csv.reader(inp)
             dict_from_csv = {rows[0]:rows[1] for rows in reader}
 
@@ -455,9 +463,9 @@ class Config(tk.Frame):
         
         local_path = self.parent_dir+"/SAMOS_system_dev/"
         if self.inoutvar.get() == 'inside':
-            ip_file = local_path+"IP_addresses_default_inside.csv"
+            ip_file = local_path+"/IP_addresses_default_inside.csv"
         else:
-            ip_file = local_path+"IP_addresses_default_outside.csv"
+            ip_file = local_path+"/IP_addresses_default_outside.csv"
         ip_file_default = local_path + "IP_addresses_default.csv"    
         os.system('cp {} {}'.format(ip_file,ip_file_default))  
 
@@ -478,8 +486,8 @@ class Config(tk.Frame):
         self.IP_SOAR.set(dict_from_csv['IP_SOAR'])
         self.IP_SAMI.set(dict_from_csv['IP_SAMI']) 
         
-        if PCM.MOTORS_onoff == 1:
-            self.IP_echo()
+        #if PCM.MOTORS_onoff == 1:
+        self.IP_echo()
         
 
 
@@ -499,15 +507,15 @@ class Config(tk.Frame):
         print("\n Checking Motors status")
         answer = PCM.echo_client()
         #print("\n Motors return:>", answer,"<")
-        if answer != 0:
+        if answer != "no connection":
             print("Motors are on")
             self.IP_Motors_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_Motors'] = True   
         else:
-            print("Motors are off")
+            print("Motors are off\n")
             self.IP_Motors_on_button.config(image = self.Image_off)
             self.IP_status_dict['IP_Motors'] = False    
-                    
+         
 
 #CCD alive?
         print("\n Checking CCD status")
@@ -519,15 +527,15 @@ class Config(tk.Frame):
             self.CCD_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_CCD'] = True   
         else:
-            print("CCD is off")
+            print("\nCCD is off\n")
             self.CCD_on_button.config(image = self.Image_off)
             self.IP_status_dict['IP_CCD'] = False  
             
 #DMD alive?
         print("\n Checking DMD status")
-        dmd.initialize()
+        dmd.initialize(address=self.IP_dict['IP_DMD'][0:-5], port=int(self.IP_dict['IP_DMD'][-4:]))
         answer = dmd._open()
-        if answer != 0:
+        if answer != "no DMD":
             print("\n DMD is on")
             self.DMD_on_button.config(image = self.Image_on)
             self.IP_status_dict['IP_DMD'] = True   
@@ -632,6 +640,7 @@ root.geometry("1000x500")
 #Then we actually create the instance.
 app = Config(root)
 
+app.startup()
 
 #Finally, show it and begin the mainloop.
 root.mainloop()

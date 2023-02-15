@@ -140,6 +140,14 @@ class Class_PCM():
 #                     conn.sendall(data)
 #
 # =============================================================================
+    # =============================================================================
+    #
+    # INITIALIZE to receive the correct address
+    #
+    # =============================================================================
+    def initialize(self, address='172.16.0.141', port=8888):  #INITITALIZED OUTSIDE, USE VPN
+        self.IP_HOST = address
+        self.IP_Port = port
 
     # =============================================================================
     #
@@ -152,6 +160,7 @@ class Class_PCM():
     # 4) import this file: >import PCM
     # 5) run this procedure >PCM.echo_client())
     # 6) the server gives you the anser and closes
+
     def echo_client(self):
         import socket
         socket.setdefaulttimeout(3)

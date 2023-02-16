@@ -36,6 +36,8 @@ from tkinter.filedialog import askopenfilename
 
 import regions
 from regions import Regions
+from regions import PixCoord, RectanglePixelRegion, PointPixelRegion, RegionVisual
+from SAMOS_DMD_dev.Create_DMD_Pattern_dev import ap_region_massimoshacked as apreg
 
 from astropy import units as u
 
@@ -50,6 +52,7 @@ import pathlib
 from astropy.io import ascii
 import numpy as np
 import glob
+import re
 
 #import sewpy   #to run sextractor wrapper
 
@@ -98,6 +101,7 @@ from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
 
 #text format for writing new info to header. Global var
 param_entry_format = '[Entry {}]\nType={}\nKeyword={}\nValue="{}"\nComment="{}\n"'
+
 
 
 class SAMOS_Main(object):
@@ -724,10 +728,43 @@ class SAMOS_Main(object):
         pass
 
     def read_slits(self):
+        reg = askopenfilename(filetypes=[("region files", "*.reg")])
+        print("trying to read region file")
+        if isinstance(reg, tuple):
+            regfileName = reg[0]
+        else:
+            regfileName = str(reg)
+        if len(regfileName) != 0:
+            self.display_region_file(regfileName)
         pass
-
+    
+    
     def push_slits(self):
         pass
+    
+    def display_region_file(self, regfileName):
+        regfile = open(regfileName, "r")
+        
+        slit_objs = []
+        for line in regfile.readlines()[3:]:
+            #print(line)
+            #assuming the regions are rectangles and in pixel coordinates for now
+            rline = re.sub("[box(]", '',line)
+            rline = re.sub(r"[)]", "", rline)
+            rline = re.sub(r" deg ", "", rline).strip("\n").split(",")
+            print(rline)
+            x, y, w, h, a = np.array(rline).astype(float)
+            
+            
+            slit_obj = RectanglePixelRegion(PixCoord(x,y), w, h)
+            slit_objs.append(slit_obj)
+            
+            apreg.add_region(canvas=self.canvas,r=slit_obj)
+            
+        self.slit_objs = slit_objs
+        regfile.close()
+        pass
+    
 
 #        IPs = Config.load_IP_user(self)
         #print(IPs)
@@ -1643,7 +1680,6 @@ def main(options, args):
 
     fv = SAMOS_Main(logger)
     top = fv.get_widget()
-ß
     if len(args) > 0:
         fv.load_file(args[0])
 

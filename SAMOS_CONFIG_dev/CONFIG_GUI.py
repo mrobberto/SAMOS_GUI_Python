@@ -302,6 +302,7 @@ class Config(tk.Frame):
 # =============================================================================
 # =============================================================================
     def startup(self):
+        self.load_IP_default()
         self.IP_echo()
         print("started")
         
@@ -419,7 +420,7 @@ class Config(tk.Frame):
         self.IP_SOAR.set(dict_from_csv['IP_SOAR'])
         self.IP_SAMI.set(dict_from_csv['IP_SAMI'])
         
-        self.IP_echo()
+
 
         return self.IP_dict
 
@@ -505,6 +506,7 @@ class Config(tk.Frame):
     def IP_echo(self):                   
 #MOTORS alive?
         print("\n Checking Motors status")
+        PCM.initialize(address=self.IP_dict['IP_Motors'][0:-5], port=int(self.IP_dict['IP_Motors'][-4:]))
         answer = PCM.echo_client()
         #print("\n Motors return:>", answer,"<")
         if answer != "no connection":

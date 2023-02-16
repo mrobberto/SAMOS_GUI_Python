@@ -689,9 +689,45 @@ class SAMOS_Main(object):
         btn3 = tk.Radiobutton(hbox1,text="Pick",padx=20,variable=self.setChecked,value="pick", command=self.set_mode_cb).pack(anchor=tk.SW)
  
 
+# =============================================================================
+#         
+#  #    DMD Handler Label Frame
+#         
+# =============================================================================
+        self.frame0r = tk.Frame(root,background="cyan")#, width=400, height=800)
+        self.frame0r.place(x=900, y=10, anchor="nw", width=220, height=200)
+ 
+        labelframe_DMD =  tk.LabelFrame(self.frame0r, text="DMD", font=("Arial", 24))
+        labelframe_DMD.pack(fill="both", expand="yes")
+ 
+         #1) Set the x size of the default slit
+         #2) Set the y size of the default slit
+         #3) save tp file slit pattern
+         #4) save and push slit pattern
+         #5) load slit pattern
+         #6) shift slit pattern
+         #7) analyze point source
+         #8) remove slit
+ 
+# =============================================================================
+         #3) write slit pattern
+# =============================================================================
+        button_write_slits =  tk.Button(labelframe_DMD, text="Slits -> File", bd=3, command=self.write_slits)
+        button_write_slits.place(x=0,y=25)
+        
+        button_read_slits =  tk.Button(labelframe_DMD, text="Slits <- File", bd=3, command=self.read_slits)
+        button_read_slits.place(x=100,y=25)
+        button_push_slits =  tk.Button(labelframe_DMD, text="Slits -> DMD", bd=3, command=self.push_slits)
+        button_push_slits.place(x=0,y=125)
 
+    def write_slits(self):
+        pass
 
+    def read_slits(self):
+        pass
 
+    def push_slits(self):
+        pass
 
 #        IPs = Config.load_IP_user(self)
         #print(IPs)
@@ -702,7 +738,8 @@ class SAMOS_Main(object):
 #              command = openNewWindow)
 #         btn.pack(pady = 10)ƒ
 #         return self.Astrometry(master)
-# =============================================================================
+# ============================================================================= 
+
     def set_filter(self):
         print(self.FW1_filter.get())
         print('moving to filter:',self.FW1_filter.get()) 
@@ -1606,7 +1643,7 @@ def main(options, args):
 
     fv = SAMOS_Main(logger)
     top = fv.get_widget()
-
+ß
     if len(args) > 0:
         fv.load_file(args[0])
 

@@ -177,7 +177,7 @@ print('\m elapsed',t1-t0,' seconds')
 """
 
 #A PINHOLE GRID OF 1 MIRROR
-
+"""
 # =============================================================================
 #...
 test_shape = np.ones((1080,2048)) # This is the size of the DC2K
@@ -189,13 +189,14 @@ for i in range(11):
         y = yc - 100 * (j-5)
         print(x,y)
         test_shape[x,y] = 0
-test_shape[538:542,1024]=0
-test_shape[540,1020:1028]=0
+test_shape[528:552,1024]=0
+#test_shape[540,1000:1048]=0
+#test_shape[538:542,0:2047]=0
 dmd.apply_shape(test_shape)
 #dmd.apply_invert()    
 pd_array_11x11x1 = pd.DataFrame(test_shape)
 pd_array_11x11x1.to_csv("Grid 11x11x1.csv")
- 
+"""
 
 #A DIAGONAL CROSS 
 """
@@ -223,7 +224,7 @@ dmd.apply_shape(test_shape)
 #
 """
 
-#A PINHOLE GRID OF 1 MIRROR
+#A GRID OF LINEs
 """
 # =============================================================================
 #...
@@ -252,4 +253,28 @@ dmd.apply_invert()
 #pd_array_11x11x1 = pd.DataFrame(test_shape)
 #pd_array_11x11x1.to_csv("Grid 11x11x1.csv")
 """
+
+
+#A GRID OF 1 MIRROR PINHOLES
+
+# =============================================================================
+test_shape = np.ones((1080,2048)) # This is the size of the DC2K
+for l in [662,1417]:
+    for k in [100,965]:
+        for i in range(0,25,5):
+            for j in range(0,25,5):
+                x = i+k
+                y = j+l
+                test_shape[x,y] = 0
+for i in range(0,25,5):
+     for j in range(0,25,5):
+          x = i+530
+          y = j+1030
+          test_shape[x,y] = 0
+#        print(x,y)
+dmd.apply_shape(test_shape)
+#dmd.apply_invert()    
+#pd_array_11x11x1 = pd.DataFrame(test_shape)
+#pd_array_11x11x1.to_csv("Grid 11x11x1.csv")
+
 

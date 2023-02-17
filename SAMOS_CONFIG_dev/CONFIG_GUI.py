@@ -309,7 +309,6 @@ class Config(tk.Frame):
         self.load_IP_default()
         self.IP_echo()
         SF.create_fits_folder()
-        print("started")
         
     """
     # =============================================================================

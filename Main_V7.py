@@ -725,9 +725,14 @@ class SAMOS_Main(object):
 # =============================================================================
         regfname_entry = tk.Entry(labelframe_DMD)
         regfname_entry.place(x=0,y=25, width=150)
-        regfname_entry.insert(tk.END,"enter pattern file name")
+        regfname_entry.config(fg='grey',bg='white') # default text is greyed out
+        regfname_entry.insert(tk.END,"enter pattern name")
+        regfname_entry.bind("<FocusIn>", self.regfname_handle_focus_in) 
+        #regfname_entry.bind("<FocusOut>", self.regfname_handle_focus_out)
+        self.regfname_entry = regfname_entry
+        # click in entry box deletes default text and allows entry of new text
         button_write_slits =  tk.Button(labelframe_DMD, text="Slits -> File", bd=3, command=self.write_slits)
-        button_write_slits.place(x=100,y=25)      
+        button_write_slits.place(x=155,y=25)      
         button_read_slits =  tk.Button(labelframe_DMD, text="File -> Slits", bd=3, command=self.read_slits)
         button_read_slits.place(x=0,y=75)
         button_push_slits =  tk.Button(labelframe_DMD, text="Slits -> DMD", bd=3, command=self.push_slits)
@@ -762,19 +767,37 @@ class SAMOS_Main(object):
 
 
 
+    def regfname_handle_focus_out(self,_):
+        
+        current_text = self.regfname_entry.get()
+        if current_text.strip(" ") == "":
+            #self.regfname_entry.delete(0, tk.END)
+            self.regfname_entry.config(fg='grey')
+            self.regfname_entry.config(bg='white')
+            self.regfname_entry.insert(0, "enter pattern name")
 
 
-
-
-
-
-
-
+    def regfname_handle_focus_in(self,_):
+        
+        current_text = self.regfname_entry.get()
+        if current_text == "enter pattern name":
+            
+            self.regfname_entry.delete(0, tk.END)
+            self.regfname_entry.config(fg="black")
 
 
     def write_slits(self):
         
-        pass
+        created_patterns_path = path / Path("DMD_PATTERNS/")
+        pattern_name = self.regfname_entry.get()
+        
+        if (pattern_name.strip(" ") == "") or (pattern_name == "enter pattern name"):
+            num_patterns_thus_far = len(os.listdir(created_patterns_path))
+            pattern_name = "pattern_reg{}.reg".format(num_patterns_thus_far)
+            
+        pattern_path = created_patterns_path / Path(pattern_name)
+        
+        chosen_regions = g2r(self.canvas)
 
     def read_slits(self):
         reg = askopenfilename(filetypes=[("region files", "*.reg")])
@@ -794,24 +817,8 @@ class SAMOS_Main(object):
     def display_region_file(self, regfileName):
         regfile = open(regfileName, "r")
         
-        slit_objs = []
-        for line in regfile.readlines()[3:]:
-            #print(line)
-            #assuming the regions are rectangles and in pixel coordinates for now
-            rline = re.sub("[box(]", '',line)
-            rline = re.sub(r"[)]", "", rline)
-            rline = re.sub(r" deg ", "", rline).strip("\n").split(",")
-            #print(rline)
-            x, y, w, h, a = np.array(rline).astype(float)
-            
-            
-            slit_obj = RectanglePixelRegion(PixCoord(x,y), w, h)
-            slit_objs.append(slit_obj)
-            
-            ap_region.add_region(canvas=self.canvas,r=slit_obj)
-            
-        self.slit_objs = slit_objs
-        regfile.close()
+        loaded_regions = Regions.read(regfileName, format='ds9')
+        [ap_region.add_region(self.canvas, reg) for reg in loaded_regions]
         pass
 
 #        IPs = Config.load_IP_user(self)
@@ -1512,11 +1519,16 @@ class SAMOS_Main(object):
         slit_box = self.canvas.get_draw_class('rectangle')
         slit_h=3
         slit_w=7
-        self.canvas.add(slit_box(x1=objs[0].objx+x1-slit_w,y1=objs[0].objy+y1-slit_h,x2=objs[0].objx+x1+slit_w,y2=objs[0].objy+y1+slit_h,
-                        width=100,
-                        height=30,
+        #self.canvas.add(slit_box(x1=objs[0].objx+x1-slit_w,y1=objs[0].objy+y1-slit_h,x2=objs[0].objx+x1+slit_w,y2=objs[0].objy+y1+slit_h,
+        #                width=100,
+        #                height=30,
+        #                angle = 0*u.deg))
+        self.canvas.add(slit_box(x=objs[0].objx,y=objs[0].objy,
+                        xradius=100,
+                        yradius=30,
                         angle = 0*u.deg))
         print("slit added")
+        
         #self.cleanup_kind('point')
         #self.cleanup_kind('box')
 

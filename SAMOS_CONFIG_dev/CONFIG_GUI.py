@@ -19,6 +19,8 @@ import os, sys
 import csv
 from pathlib import Path
 import time 
+from datetime import datetime
+
 #define the local directory, absolute so it is not messed up when this is called
 
 path = Path(__file__).parent.absolute()
@@ -26,6 +28,8 @@ local_dir = str(path.absolute())
 parent_dir = str(path.parent)   
 sys.path.append(parent_dir)
 
+#load the functions
+from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
 # =============================================================================
 # Import classes
 # 
@@ -304,10 +308,31 @@ class Config(tk.Frame):
     def startup(self):
         self.load_IP_default()
         self.IP_echo()
+        SF.create_fits_folder()
         print("started")
         
-        
-        
+    """
+    # =============================================================================
+    # create directoy to store the data
+    # =============================================================================
+        def create_fits_folder(self) :       
+    
+            today = datetime.now()
+            
+            #name of the directory    
+            self.fits_dir = self.parent_dir + "/SAMOS_" + today.strftime('%Y%m%d')
+            
+            isdir = os.path.isdir(self.fits_dir)
+            if isdir == False:  
+                os.mkdir(self.fits_dir)
+                
+            fits_directory_file = open(self.parent_dir+"/SAMOS_system_dev/fits_current_dir_name.txt", "w")
+            fits_directory_file.write(self.fits_dir)
+            fits_directory_file.close()    
+    """
+
+
+
 
     def load_dir_default(self):
         dict_from_csv = {}

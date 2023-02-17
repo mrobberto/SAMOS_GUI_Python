@@ -8,11 +8,11 @@
 # Please see the file LICENSE.txt for details.
 #
 import sys
-sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
+#sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
 
 import os
 import threading
-
+import pandas as pd
 
 from ginga.tkw.ImageViewTk import CanvasView
 from ginga.canvas.CanvasObject import get_canvas_types
@@ -23,12 +23,16 @@ from ginga.util.ap_region import astropy_region_to_ginga_canvas_object as r2g
 from ginga.util.ap_region import ginga_canvas_object_to_astropy_region as g2r
 from ginga.canvas import CompoundMixin as CM
 
+#test plugin
+#from ginga import plugin
 
 from ginga.util import ap_region
 
 from ginga.AstroImage import AstroImage
 img = AstroImage()
 from astropy.io import fits
+from PIL import Image,ImageTk,ImageOps
+
 
 import tkinter as tk
 from tkinter import ttk
@@ -37,7 +41,6 @@ from tkinter.filedialog import askopenfilename
 import regions
 from regions import Regions
 from regions import PixCoord, RectanglePixelRegion, PointPixelRegion, RegionVisual
-from SAMOS_DMD_dev.Create_DMD_Pattern_dev import ap_region_massimoshacked as apreg
 
 from astropy import units as u
 
@@ -101,7 +104,6 @@ from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
 
 #text format for writing new info to header. Global var
 param_entry_format = '[Entry {}]\nType={}\nKeyword={}\nValue="{}"\nComment="{}\n"'
-
 
 
 class SAMOS_Main(object):
@@ -614,6 +616,11 @@ class SAMOS_Main(object):
         canvas.register_for_cursor_drawing(fi)
         canvas.add_callback('draw-event', self.draw_cb)
         canvas.set_draw_mode('draw')
+
+        # without this call, you can only draw with the right mouse button
+        # using the default user interface bindings
+        #canvas.register_for_cursor_drawing(fi)
+
         canvas.set_surface(fi)
         canvas.ui_set_active(True)
         self.canvas = canvas
@@ -636,7 +643,7 @@ class SAMOS_Main(object):
 
         self.drawtypes = canvas.get_drawtypes()
         ## wdrawtype = ttk.Combobox(root, values=self.drawtypes,
-        ##                          command=self.set_drawparams)
+        ##                         command=self.set_drawparams)
         ## index = self.drawtypes.index('ruler')
         ## wdrawtype.current(index)
         wdrawtype = tk.Entry(hbox, width=12)
@@ -663,7 +670,7 @@ class SAMOS_Main(object):
         self.wfill = wfill
 
         walpha = tk.Entry(hbox, width=12)
-        walpha.insert(0, '0.0')
+        walpha.insert(0, '1.0')
         walpha.bind("<Return>", self.set_drawparams)
         self.walpha = walpha
 
@@ -699,14 +706,14 @@ class SAMOS_Main(object):
 #         
 # =============================================================================
         self.frame0r = tk.Frame(root,background="cyan")#, width=400, height=800)
-        self.frame0r.place(x=900, y=10, anchor="nw", width=220, height=200)
+        self.frame0r.place(x=900, y=10, anchor="nw", width=320, height=500)
  
         labelframe_DMD =  tk.LabelFrame(self.frame0r, text="DMD", font=("Arial", 24))
         labelframe_DMD.pack(fill="both", expand="yes")
  
          #1) Set the x size of the default slit
          #2) Set the y size of the default slit
-         #3) save tp file slit pattern
+         #3) save slit pattern to file 
          #4) save and push slit pattern
          #5) load slit pattern
          #6) shift slit pattern
@@ -716,15 +723,57 @@ class SAMOS_Main(object):
 # =============================================================================
          #3) write slit pattern
 # =============================================================================
+        regfname_entry = tk.Entry(labelframe_DMD)
+        regfname_entry.place(x=0,y=25, width=150)
+        regfname_entry.insert(tk.END,"enter pattern file name")
         button_write_slits =  tk.Button(labelframe_DMD, text="Slits -> File", bd=3, command=self.write_slits)
-        button_write_slits.place(x=0,y=25)
-        
-        button_read_slits =  tk.Button(labelframe_DMD, text="Slits <- File", bd=3, command=self.read_slits)
-        button_read_slits.place(x=100,y=25)
+        button_write_slits.place(x=100,y=25)      
+        button_read_slits =  tk.Button(labelframe_DMD, text="File -> Slits", bd=3, command=self.read_slits)
+        button_read_slits.place(x=0,y=75)
         button_push_slits =  tk.Button(labelframe_DMD, text="Slits -> DMD", bd=3, command=self.push_slits)
         button_push_slits.place(x=0,y=125)
 
+####
+# LOAD BUTTONS
+###
+        button_load_map = tk.Button(labelframe_DMD,
+                        text = "Load DMD Map",
+                        command = self.LoadMap)
+        button_load_map.place(x=4,y=162)
+
+        label_filename = tk.Label(labelframe_DMD, text="Current DMD Map")
+        label_filename.place(x=4,y=190)
+        self.str_filename = tk.StringVar() 
+        self.textbox_filename = tk.Text(labelframe_DMD, height = 1, width = 22)      
+        self.textbox_filename.place(x=120,y=190)
+
+        button_load_slits = tk.Button(labelframe_DMD,
+                       text = "Load Slit Grid",
+                       command = self.LoadSlits)
+        button_load_slits.place(x=4,y=222)
+
+        label_filename_slits = tk.Label(labelframe_DMD, text="Current Slit Grid")
+        label_filename_slits.place(x=4,y=250)
+        self.str_filename_slits = tk.StringVar() 
+        self.textbox_filename_slits = tk.Text(labelframe_DMD, height = 1, width = 22)      
+        self.textbox_filename_slits.place(x=120,y=250)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     def write_slits(self):
+        
         pass
 
     def read_slits(self):
@@ -752,19 +801,18 @@ class SAMOS_Main(object):
             rline = re.sub("[box(]", '',line)
             rline = re.sub(r"[)]", "", rline)
             rline = re.sub(r" deg ", "", rline).strip("\n").split(",")
-            print(rline)
+            #print(rline)
             x, y, w, h, a = np.array(rline).astype(float)
             
             
             slit_obj = RectanglePixelRegion(PixCoord(x,y), w, h)
             slit_objs.append(slit_obj)
             
-            apreg.add_region(canvas=self.canvas,r=slit_obj)
+            ap_region.add_region(canvas=self.canvas,r=slit_obj)
             
         self.slit_objs = slit_objs
         regfile.close()
         pass
-    
 
 #        IPs = Config.load_IP_user(self)
         #print(IPs)
@@ -850,8 +898,8 @@ class SAMOS_Main(object):
         #self.canvas.save_all_objects()
 
     def clear_canvas(self):
-        CM.CompoundMixin.delete_all_objects(self.canvas,redraw=True)
-#        self.canvas.deleteAllObjects()
+#        CM.CompoundMixin.delete_all_objects(self.canvas)#,redraw=True)
+        self.canvas.delete_all_objects()
 
 #ConvertSIlly courtesy of C. Loomis
     def convertSIlly(self,fname, outname=None):
@@ -1388,11 +1436,15 @@ class SAMOS_Main(object):
         obj.pickable = True
         obj.add_callback('edited', self.edit_cb)
         kind = self.wdrawtype.get()
+        print("kind: ", kind)
         if self.vslit.get() != 0 and kind == 'point':
             true_kind='Slit'
             print("It is a slit")
             print("Handle the rectangle as a slit")
             self.slit_handler(obj)    
+        #else:
+        #    return
+        
         
     def slit_handler(self, point):
         print('ready to associate a slit to ')
@@ -1465,11 +1517,13 @@ class SAMOS_Main(object):
                         height=30,
                         angle = 0*u.deg))
         print("slit added")
-        self.cleanup_kind('point')
-        self.cleanup_kind('box')
+        #self.cleanup_kind('point')
+        #self.cleanup_kind('box')
 
 
     def pick_cb(self, obj, canvas, event, pt, ptype):
+        print("pick event '%s' with obj %s at (%.2f, %.2f)" % (
+            ptype, obj.kind, pt[0], pt[1]))
         self.logger.info("pick event '%s' with obj %s at (%.2f, %.2f)" % (
             ptype, obj.kind, pt[0], pt[1]))
         return True
@@ -1673,6 +1727,97 @@ class SAMOS_Main(object):
     
 
 
+
+
+
+
+# =============================================================================
+#
+# Load DMD map file
+#
+# =============================================================================
+
+    def LoadMap(self):
+        self.textbox_filename.delete('1.0', tk.END)
+        self.textbox_filename_slits.delete('1.0', tk.END)
+        filename = askopenfilename(initialdir = local_dir+"/DMD_maps_csv",
+                                        title = "Select a File",
+                                        filetypes = (("Text files",
+                                                      "*.csv"),
+                                                     ("all files",
+                                                      "*.*")))
+        head, tail = os.path.split(filename)
+        self.textbox_filename.insert(tk.END, tail)
+        
+        import csv
+        myList = []
+
+        with open (filename,'r') as file:
+            myFile = csv.reader(file)
+            for row in myFile:
+                myList.append(row)
+        #print(myList)         
+        
+        for i in range(len(myList)):
+            print("Row " + str(i) + ": " + str(myList[i]))
+        
+        test_shape = np.ones((1080,2048)) # This is the size of the DC2K    
+        for i in range(len(myList)):
+            test_shape[int(myList[i][0]):int(myList[i][1]),int(myList[i][2]):int(myList[i][3])] = int(myList[i][4])
+        
+        DMD.apply_shape(test_shape)    
+
+        # Create a photoimage object of the image in the path
+        #Load an image in the script
+        # global img
+        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        self.img= ImageTk.PhotoImage(image_map)
+
+        print('img =', self.img)
+        self.canvas.create_image(104,128,image=self.img)
+
+        
+# =============================================================================
+#
+# Load Slit file
+#
+# =============================================================================
+        
+    def LoadSlits(self):
+        self.textbox_filename.delete('1.0', tk.END)
+        self.textbox_filename_slits.delete('1.0', tk.END)
+        filename_slits = askopenfilename(initialdir = local_dir+"/DMD_maps_csv",
+                                        title = "Select a File",
+                                        filetypes = (("Text files",
+                                                      "*.csv"),
+                                                     ("all files",
+                                                      "*.*")))
+        head, tail = os.path.split(filename_slits)
+        self.textbox_filename_slits.insert(tk.END, tail)
+
+        table = pd.read_csv(filename_slits)
+        xoffset = 0
+        yoffset = np.full(len(table.index),int(2048/4))
+        y1 = (round(table['x'])-np.floor(table['dx1'])).astype(int) + yoffset
+        y2 = (round(table['x'])+np.ceil(table['dx2'])).astype(int) + yoffset
+        x1 = (round(table['y'])-np.floor(table['dy1'])).astype(int) + xoffset
+        x2 = (round(table['y'])+np.ceil(table['dy2'])).astype(int) + xoffset
+        slit_shape = np.ones((1080,2048)) # This is the size of the DC2K
+        for i in table.index:
+           slit_shape[x1[i]:x2[i],y1[i]:y2[i]]=0
+        DMD.apply_shape(slit_shape)
+        
+        # Create a photoimage object of the image in the path
+        #Load the image
+        # global img
+        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        self.img= ImageTk.PhotoImage(image_map)
+
+        #Add image to the Canvas Items
+        print('img =', self.img)
+        self.canvas.create_image(104,128,image=self.img)
+     
+
 ######
 def main(options, args):
 
@@ -1680,6 +1825,7 @@ def main(options, args):
 
     fv = SAMOS_Main(logger)
     top = fv.get_widget()
+
     if len(args) > 0:
         fv.load_file(args[0])
 

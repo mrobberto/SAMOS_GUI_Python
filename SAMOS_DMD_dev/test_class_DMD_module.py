@@ -16,6 +16,8 @@ import numpy as np
 from Class_DMD_dev import DigitalMicroMirrorDevice
 import time
 
+import pandas as pd
+
 t0=time.perf_counter()
 
 
@@ -68,18 +70,21 @@ dmd._open()
 # # > CCD:515,488 = DMD:540,1024
 # =============================================================================
 
-#pinholes for scale
+#pinhole at the center
 # =============================================================================
-#test_shape = np.ones((1080,2048)) # This is the size of the DC2K
-#xc = 540
-#yc=1024
-#test_shape[xc-1:xc+1,yc-1:yc+1] = 0
+"""
+test_shape = np.ones((1080,2048)) # This is the size of the DC2K
+xc = 540
+yc = 1024
+test_shape[xc:xc+1,yc:yc+1] = 0
+dmd.apply_shape(test_shape)
+dmd.apply_invert()    
+"""
 # 
 #test_shape[xc-1:xc+1,yc-1:yc+1] = 0
 # # > CCD:515,488 = DMD:540,1024
 # =============================================================================
 
-#dmd.apply_shape(test_shape)
 #
 #test_shape = np.ones((1080,2048)) # This is the size of the DC2K
 #test_shape[513:598,:] = 0
@@ -117,6 +122,7 @@ dmd.apply_slits(slits)
 #dmd.apply_invert()    
 
 
+"""
 # =============================================================================
 # RANDOM SET OF CUSTOM SLITS
 # =============================================================================
@@ -139,14 +145,15 @@ slits = [slit1,slit2,slit3,slit4,slit5,slit6,slit7,slit8,slit9,slit10,slit11,sli
 # #slits=[slit1]
 #print(slits)
 dmd.apply_slits(slits)
-
-
-
 """
+
+
+
 # =============================================================================
-# IMPORTED .csv table
+# PINHOLE GRID WITH IMPORTED .csv table
 # =============================================================================
 # =============================================================================
+"""
 import pandas as pd
 # #table = pd.read_csv("test_pattern1_92.03352_24.35393.dat")
 table = pd.read_csv("grid 11x11x3.csv")
@@ -156,10 +163,10 @@ y1 = (round(table['x'])-np.floor(table['dx1'])).astype(int) + yoffset
 y2 = (round(table['x'])+np.ceil(table['dx2'])).astype(int) + yoffset
 x1 = (round(table['y'])-np.floor(table['dy1'])).astype(int) + xoffset
 x2 = (round(table['y'])+np.ceil(table['dy2'])).astype(int) + xoffset
-#test_shape = np.ones((1080,2048)) # This is the size of the DC2K
-#for i in table.index:
-#    test_shape[x1[i]:x2[i],y1[i]:y2[i]]=0
-#dmd.apply_shape(test_shape)
+test_shape = np.ones((1080,2048)) # This is the size of the DC2K
+for i in table.index:
+    test_shape[x1[i]:x2[i],y1[i]:y2[i]]=0
+dmd.apply_shape(test_shape)
 
 #dmd.apply_invert()    
 
@@ -169,7 +176,28 @@ print('\m elapsed',t1-t0,' seconds')
 # =============================================================================
 """
 
-#pinholes for scale
+#A PINHOLE GRID OF 1 MIRROR
+
+# =============================================================================
+#...
+test_shape = np.ones((1080,2048)) # This is the size of the DC2K
+xc = 540
+yc = 1024
+for i in range(11):
+    for j in range(11):
+        x = xc - 100 * (i-5)
+        y = yc - 100 * (j-5)
+        print(x,y)
+        test_shape[x,y] = 0
+test_shape[538:542,1024]=0
+test_shape[540,1020:1028]=0
+dmd.apply_shape(test_shape)
+#dmd.apply_invert()    
+pd_array_11x11x1 = pd.DataFrame(test_shape)
+pd_array_11x11x1.to_csv("Grid 11x11x1.csv")
+ 
+
+#A DIAGONAL CROSS 
 """
 # =============================================================================
 #...
@@ -194,3 +222,34 @@ dmd.apply_shape(test_shape)
 #pd_cross.to_csv("cross.csv")
 #
 """
+
+#A PINHOLE GRID OF 1 MIRROR
+"""
+# =============================================================================
+#...
+test_shape = np.ones((1080,2048)) # This is the size of the DC2K
+xc = 540
+yc = 1024
+delta=5
+for i in range(50,100,2*delta):
+    for j in range(50,100):
+        x = i
+        y = j+512
+        test_shape[x:x+delta,y] = 0
+#        print(x,y)
+        x = i+930
+        y = j+512
+        test_shape[x:x+delta,y] = 0
+#        print(x,y)
+        x = i
+        y = j+930+512
+        test_shape[x:x+delta,y] = 0
+        x = i+930
+        y = j+930+512
+        test_shape[x:x+delta,y] = 0
+dmd.apply_shape(test_shape)
+dmd.apply_invert()    
+#pd_array_11x11x1 = pd.DataFrame(test_shape)
+#pd_array_11x11x1.to_csv("Grid 11x11x1.csv")
+"""
+

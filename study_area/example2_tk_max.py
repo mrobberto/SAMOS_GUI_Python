@@ -6,7 +6,7 @@
 # Please see the file LICENSE.txt for details.
 #
 import sys
-sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
+#sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
 
 from ginga.tkw.ImageViewTk import CanvasView
 from ginga.misc import log

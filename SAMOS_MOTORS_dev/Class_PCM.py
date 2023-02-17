@@ -149,6 +149,9 @@ class Class_PCM():
         self.IP_HOST = address
         self.IP_Port = port
 
+        print('echo from server:')
+        print(self.echo_client())
+
     # =============================================================================
     #
     # echo client()

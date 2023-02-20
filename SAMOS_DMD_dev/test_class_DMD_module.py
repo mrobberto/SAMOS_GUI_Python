@@ -259,8 +259,8 @@ dmd.apply_invert()
 
 # =============================================================================
 test_shape = np.ones((1080,2048)) # This is the size of the DC2K
-for l in [662,1417]:
-    for k in [100,965]:
+for l in [762,117]:
+    for k in [200,865]:
         for i in range(0,25,5):
             for j in range(0,25,5):
                 x = i+k

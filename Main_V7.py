@@ -99,6 +99,9 @@ from SAMOS_DMD_dev.Class_DMD import DigitalMicroMirrorDevice as DMD
 from SAMOS_DMD_dev.SAMOS_DMD_GUI_dev import GUI_DMD 
 from SAMOS_SOAR_dev.tk_class_SOAR_V0 import SOAR as SOAR
 from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
+
+from SAMOS_DMD_dev.CONVERT.CONVERT_class import CONVERT 
+convert = CONVERT()
 #from ginga.misc import widgets 
 #import PCM_module_GUI as Motors
 
@@ -725,9 +728,14 @@ class SAMOS_Main(object):
 # =============================================================================
         regfname_entry = tk.Entry(labelframe_DMD)
         regfname_entry.place(x=0,y=25, width=150)
-        regfname_entry.insert(tk.END,"enter pattern file name")
+        regfname_entry.config(fg='grey',bg='white') # default text is greyed out
+        regfname_entry.insert(tk.END,"enter pattern name")
+        regfname_entry.bind("<FocusIn>", self.regfname_handle_focus_in) 
+        #regfname_entry.bind("<FocusOut>", self.regfname_handle_focus_out)
+        self.regfname_entry = regfname_entry
+        # click in entry box deletes default text and allows entry of new text
         button_write_slits =  tk.Button(labelframe_DMD, text="Slits -> File", bd=3, command=self.write_slits)
-        button_write_slits.place(x=100,y=25)      
+        button_write_slits.place(x=155,y=25)      
         button_read_slits =  tk.Button(labelframe_DMD, text="File -> Slits", bd=3, command=self.read_slits)
         button_read_slits.place(x=0,y=75)
         button_push_slits =  tk.Button(labelframe_DMD, text="Slits -> DMD", bd=3, command=self.push_slits)
@@ -760,21 +768,41 @@ class SAMOS_Main(object):
 
 
 
+    def regfname_handle_focus_out(self,_):
+        
+        current_text = self.regfname_entry.get()
+        if current_text.strip(" ") == "":
+            #self.regfname_entry.delete(0, tk.END)
+            self.regfname_entry.config(fg='grey')
+            self.regfname_entry.config(bg='white')
+            self.regfname_entry.insert(0, "enter pattern name")
 
 
-
-
-
-
-
-
-
-
+    def regfname_handle_focus_in(self,_):
+        
+        current_text = self.regfname_entry.get()
+        if current_text == "enter pattern name":
+            
+            self.regfname_entry.delete(0, tk.END)
+            self.regfname_entry.config(fg="black")
 
 
     def write_slits(self):
+        # when writing a new DMD pattern, put it in the designated directory
+        # don't want to clutter working dir.
+        # At SOAR, this should be cleared out every night for the next observer
+        created_patterns_path = path / Path("DMD_PATTERNS/")
+        pattern_name = self.regfname_entry.get()
         
-        pass
+        if (pattern_name.strip(" ") == "") or (pattern_name == "enter pattern name"):
+            # if there is no pattern name provided, use a default based on 
+            # number of patterns already present
+            num_patterns_thus_far = len(os.listdir(created_patterns_path))
+            pattern_name = "pattern_reg{}.reg".format(num_patterns_thus_far)
+            
+        pattern_path = created_patterns_path / Path(pattern_name)
+        
+        chosen_regions = g2r(self.canvas)
 
     def read_slits(self):
         reg = askopenfilename(filetypes=[("region files", "*.reg")])
@@ -787,33 +815,20 @@ class SAMOS_Main(object):
             self.display_region_file(regfileName)
         pass
     
-    
-    def push_slits(self):
-        pass
-    
+
     def display_region_file(self, regfileName):
         regfile = open(regfileName, "r")
         
-        slit_objs = []
-        for line in regfile.readlines()[3:]:
-            #print(line)
-            #assuming the regions are rectangles and in pixel coordinates for now
-            rline = re.sub("[box(]", '',line)
-            rline = re.sub(r"[)]", "", rline)
-            rline = re.sub(r" deg ", "", rline).strip("\n").split(",")
-            #print(rline)
-            x, y, w, h, a = np.array(rline).astype(float)
-            
-            
-            slit_obj = RectanglePixelRegion(PixCoord(x,y), w, h)
-            slit_objs.append(slit_obj)
-            
-            ap_region.add_region(canvas=self.canvas,r=slit_obj)
-            
-        self.slit_objs = slit_objs
-        regfile.close()
+        loaded_regions = Regions.read(regfileName, format='ds9')
+        [ap_region.add_region(self.canvas, reg) for reg in loaded_regions]
         pass
 
+    
+    
+    def push_slits(self):
+        # push selected slits to DMD pattern
+        
+        pass
 #        IPs = Config.load_IP_user(self)
         #print(IPs)
 # =============================================================================
@@ -1376,6 +1391,8 @@ class SAMOS_Main(object):
         
 
     def cursor_cb(self, viewer, button, data_x, data_y):
+        
+       
         """This gets called when the data position relative to the cursor
         changes.
         """
@@ -1390,7 +1407,8 @@ class SAMOS_Main(object):
             value = None
 
         fits_x, fits_y = data_x + 1, data_y + 1
-
+        
+        dmd_x, dmd_y = convert.CCD2DMD(fits_x, fits_y)
         # Calculate WCS RA
         try:
             # NOTE: image function operates on DATA space coords
@@ -1408,9 +1426,12 @@ class SAMOS_Main(object):
             #    str(e)))
             ra_txt = 'BAD WCS'
             dec_txt = 'BAD WCS'
-
-        text = "RA: %s  DEC: %s  X: %.2f  Y: %.2f  Value: %s" % (
-            ra_txt, dec_txt, fits_x, fits_y, value)
+        coords_text = "RA: %s  DEC: %s \n"%(ra_txt, dec_txt)
+        dmd_text = "DMD_X: %.2f  DMD_Y: %.2f \n"%(dmd_x, dmd_y)
+        text = "X: %.2f  Y: %.2f  Value: %s" % (
+            fits_x, fits_y, value)
+        
+        text = coords_text + dmd_text + text
         self.readout.config(text=text)
 
     def quit(self, root):
@@ -1428,13 +1449,14 @@ class SAMOS_Main(object):
         obj = canvas.get_object_by_tag(tag)
         obj.add_callback('pick-down', self.pick_cb, 'down')
         obj.add_callback('pick-up', self.pick_cb, 'up')
-        obj.add_callback('pick-move', self.pick_cb, 'move')
-        obj.add_callback('pick-hover', self.pick_cb, 'hover')
-        obj.add_callback('pick-enter', self.pick_cb, 'enter')
-        obj.add_callback('pick-leave', self.pick_cb, 'leave')
+        #obj.add_callback('pick-move', self.pick_cb, 'move')
+        #obj.add_callback('pick-hover', self.pick_cb, 'hover')
+        #obj.add_callback('pick-enter', self.pick_cb, 'enter')
+        #obj.add_callback('pick-leave', self.pick_cb, 'leave')
         obj.add_callback('pick-key', self.pick_cb, 'key')
         obj.pickable = True
         obj.add_callback('edited', self.edit_cb)
+        #obj.add_callback('pick-key',self.delete_obj_cb, 'key')
         kind = self.wdrawtype.get()
         print("kind: ", kind)
         if self.vslit.get() != 0 and kind == 'point':
@@ -1444,6 +1466,7 @@ class SAMOS_Main(object):
             self.slit_handler(obj)    
         #else:
         #    return
+
         
         
     def slit_handler(self, point):
@@ -1522,14 +1545,19 @@ class SAMOS_Main(object):
 
 
     def pick_cb(self, obj, canvas, event, pt, ptype):
+        
         print("pick event '%s' with obj %s at (%.2f, %.2f)" % (
             ptype, obj.kind, pt[0], pt[1]))
         self.logger.info("pick event '%s' with obj %s at (%.2f, %.2f)" % (
             ptype, obj.kind, pt[0], pt[1]))
+        
+        if event.key=='d':
+            canvas.delete_object(obj)
         return True
     
     def edit_cb(self, obj):
         self.logger.info("object %s has been edited" % (obj.kind))
+
         return True
 
     def cleanup_kind(self,kind):

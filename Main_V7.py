@@ -11,6 +11,10 @@ import sys
 #sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
 
 import os
+from os.path import exists as file_exists
+import time
+from argparse import ArgumentParser
+    
 import threading
 import pandas as pd
 
@@ -22,37 +26,40 @@ from ginga import colors
 from ginga.util.ap_region import astropy_region_to_ginga_canvas_object as r2g
 from ginga.util.ap_region import ginga_canvas_object_to_astropy_region as g2r
 from ginga.canvas import CompoundMixin as CM
-
-#test plugin
-#from ginga import plugin
-
 from ginga.util import ap_region
-
 from ginga.AstroImage import AstroImage
 img = AstroImage()
-from astropy.io import fits
+
 from PIL import Image,ImageTk,ImageOps
 
 
 import tkinter as tk
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import asksaveasfile
 
 #import regions
 from regions import Regions
 from regions import PixCoord, RectanglePixelRegion, PointPixelRegion, RegionVisual
 
 from astropy import units as u
+from astropy.io import fits, ascii
+from astropy.stats import sigma_clipped_stats, SigmaClip
+import astropy.wcs as wcs
+
+from photutils.background import Background2D, MedianBackground
+from photutils.detection import DAOStarFinder
 
 from ginga.util import iqcalc
 iq = iqcalc.IQCalc()
 
+import matplotlib.pyplot as plt
 
+import csv
 
 ### Needed to run ConvertSIlly by C. Loomis
 import math
 import pathlib
-from astropy.io import ascii
 import numpy as np
 import glob
 import re
@@ -68,14 +75,14 @@ STD_FORMAT = '%(asctime)s | %(levelname)1.1s | %(filename)s:%(lineno)d (%(funcNa
 # Astrometry.return_from_astrometry()
 # 
 # =============================================================================
-import csv
+
 from pathlib import Path
 #define the local directory, absolute so it is not messed up when this is called
 path = Path(__file__).parent.absolute()
 local_dir = str(path.absolute())
 sys.path.append(local_dir)
 
-print("line 48 main local",local_dir)
+#print("line 48 main local",local_dir)
 os.sys.path.append(local_dir)
 os.sys.path.append(local_dir+"/Astrometry")
 os.sys.path.append(local_dir+"/SAMOS_CCD_dev")
@@ -106,6 +113,7 @@ from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
 from SAMOS_DMD_dev.CONVERT.CONVERT_class import CONVERT 
 convert = CONVERT()
 
+
 from SlitTableViewer import SlitTableView as STView
 
 #from ginga.misc import widgets 
@@ -130,7 +138,7 @@ class SAMOS_Main(object):
         root = tk.Tk()
         root.title("SAMOS")
        
-        root.geometry("1280x800")   
+        root.geometry("1280x900")   
         
         #root.set_border_width(2)
         #root.connect("delete_event", lambda w, e: self.quit(w))
@@ -390,7 +398,7 @@ class SAMOS_Main(object):
         entry_Comment = tk.Entry(labelframe_Acquire, width=11,  bd =3)# , xscrollcommand=scrollbar.set)
         entry_Comment.place(x=100, y=68)
 
-        button_ExpStart=  tk.Button(labelframe_Acquire, text="START", bd=3, bg='#0052cc',font=("Arial", 24),
+        button_ExpStart=  tk.Button(labelframe_Acquire, text="READ", bd=3, bg='#0052cc',font=("Arial", 24),
                                          command=self.expose_light)
         button_ExpStart.place(x=75,y=95)
 
@@ -718,7 +726,7 @@ class SAMOS_Main(object):
 #         
 # =============================================================================
         self.frame0r = tk.Frame(root,background="cyan")#, width=400, height=800)
-        self.frame0r.place(x=900, y=10, anchor="nw", width=320, height=500)
+        self.frame0r.place(x=900, y=10, anchor="nw", width=360, height=500)
  
         labelframe_DMD =  tk.LabelFrame(self.frame0r, text="DMD", font=("Arial", 24))
         labelframe_DMD.pack(fill="both", expand="yes")
@@ -743,12 +751,12 @@ class SAMOS_Main(object):
         #regfname_entry.bind("<FocusOut>", self.regfname_handle_focus_out)
         self.regfname_entry = regfname_entry
         # click in entry box deletes default text and allows entry of new text
-        button_write_slits =  tk.Button(labelframe_DMD, text="Slits -> File", bd=3, command=self.write_slits)
+        button_write_slits =  tk.Button(labelframe_DMD, text="SAVE: Slits -> .reg file", bd=3, command=self.write_slits)
         button_write_slits.place(x=155,y=25)      
-        button_read_slits =  tk.Button(labelframe_DMD, text="File -> Slits", bd=3, command=self.read_slits)
-        button_read_slits.place(x=0,y=75)
-        button_push_slits =  tk.Button(labelframe_DMD, text="Slits -> DMD", bd=3, command=self.push_slits)
-        button_push_slits.place(x=0,y=125)
+        button_read_slits =  tk.Button(labelframe_DMD, text="LOAD: .reg file -> Slits", bd=3, command=self.read_slits)
+        button_read_slits.place(x=155,y=50)
+        button_push_slits =  tk.Button(labelframe_DMD, text="Slits -> DMD", bd=3, font=("Arial", 24),  relief=tk.RAISED, command=self.push_slits)
+        button_push_slits.place(x=80,y=85)
 
 
   
@@ -802,9 +810,9 @@ class SAMOS_Main(object):
         # when writing a new DMD pattern, put it in the designated directory
         # don't want to clutter working dir.
         # At SOAR, this should be cleared out every night for the next observer
-        created_patterns_path = path / Path("DMD_PATTERNS/")
+        created_patterns_path = path / Path("Astropy Regions/")
         pattern_name = self.regfname_entry.get()
-        
+        #check if pattern name has been proposed
         if (pattern_name.strip(" ") == "") or (pattern_name == "enter pattern name"):
             # if there is no pattern name provided, use a default based on 
             # number of patterns already present
@@ -813,10 +821,18 @@ class SAMOS_Main(object):
             
         pattern_path = created_patterns_path / Path(pattern_name)
         
-        chosen_regions = g2r(self.canvas)
+        #create astropy regions and save them after checking that there is something to save...
+        slits = CM.CompoundMixin.get_objects_by_kind(self.canvas,'rectangle')
+        list_slits = list(slits)
+        if len(list_slits) != 0:
+            RRR=Regions([g2r(list_slits[0])])
+            for i in range(1,len(list_slits)):
+                RRR.append(g2r(list_slits[i]))
+        RRR.write(str(pattern_path)+'.reg', overwrite=True)
+        print("\nSlits written to region file\n")
 
     def read_slits(self):
-        reg = askopenfilename(filetypes=[("region files", "*.reg")])
+        reg = askopenfilename(filetypes=[("region files", "*.reg")],initialdir=local_dir+'/Astropy Regions')
         print("trying to read region file")
         if isinstance(reg, tuple):
             regfileName = reg[0]
@@ -838,6 +854,32 @@ class SAMOS_Main(object):
     
     def push_slits(self):
         # push selected slits to DMD pattern
+        #Export all Ginga objects to Astropy region
+        #1. list of ginga objects
+        objects = CM.CompoundMixin.get_objects(self.canvas)
+        counter = 0
+        slit_shape = np.ones((1080,2048)) # This is the size of the DC2K
+        for obj in objects:
+            ccd_x0,ccd_y0,ccd_x1,ccd_y1 = obj.get_llur()
+            x1,y1 = convert.CCD2DMD(ccd_x0,ccd_y0)
+            x1,y1 = int(np.floor(x1)), int(np.floor(y1))
+            x2,y2 = convert.CCD2DMD(ccd_x1,ccd_y1)
+            x2,y2 = int(np.ceil(x2)), int(np.ceil(y2))
+            #dmd_corners[:][1] = corners[:][1]+500
+            ####   
+            #x1 = round(dmd_corners[0][0])
+            #y1 = round(dmd_corners[0][1])+400
+            #x2 = round(dmd_corners[2][0])
+            #y2 = round(dmd_corners[2][1])+400
+        #3 load the slit pattern   
+            slit_shape[x1:x2,y1:y2]=0
+        DMD.initialize()
+        DMD._open()
+        DMD.apply_shape(slit_shape)  
+        #DMD.apply_invert()   
+       
+        print("check")
+  
         
         pass
 #        IPs = Config.load_IP_user(self)
@@ -919,7 +961,6 @@ class SAMOS_Main(object):
         self.canvas.set_drawtype(kind, **params)
 
     def save_canvas(self):
-        from ginga.util import ap_region
         regs = ap_region.export_regions_canvas(self.canvas, logger=self.logger)
         #self.canvas.save_all_objects()
 
@@ -1202,8 +1243,6 @@ class SAMOS_Main(object):
 # 
 # =============================================================================
     def check_for_file_existence(self):
-        from os.path import exists as file_exists
-        import time
         FITSfiledir = './fits_image/'
         while len(os.listdir(FITSfiledir)) == 0:
             print('nothing here')
@@ -1362,16 +1401,14 @@ class SAMOS_Main(object):
         
         #2, Extract the slits and convert pixel->DMD values
         
-        dmd.initialize()
-        dmd._open()
+        DMD.initialize()
+        DMD._open()
         
         #create initial DMD slit mask
         slit_shape = np.ones((1080,2048)) # This is the size of the DC2K
         
         regions = Regions.read('my_regions.reg')
 
-        from SAMOS_DMD_dev.CONVERT.CONVERT_class import CONVERT 
-        convert = CONVERT()
 
         for i in range(len(regions)):
             reg = regions[i]
@@ -1392,8 +1429,8 @@ class SAMOS_Main(object):
             #y2 = round(dmd_corners[2][1])+400
         #3 load the slit pattern   
             slit_shape[x1:x2,y1:y2]=0
-        dmd.apply_shape(slit_shape)  
-        #dmd.apply_invert()   
+        DMD.apply_shape(slit_shape)  
+        #DMD.apply_invert()   
 
         
         print("check")
@@ -1418,6 +1455,7 @@ class SAMOS_Main(object):
         fits_x, fits_y = data_x + 1, data_y + 1
         
         dmd_x, dmd_y = convert.CCD2DMD(fits_x, fits_y)
+        
         # Calculate WCS RA
         try:
             # NOTE: image function operates on DATA space coords
@@ -1436,7 +1474,8 @@ class SAMOS_Main(object):
             ra_txt = 'BAD WCS'
             dec_txt = 'BAD WCS'
         coords_text = "RA: %s  DEC: %s \n"%(ra_txt, dec_txt)
-        dmd_text = "DMD_X: %.2f  DMD_Y: %.2f \n"%(dmd_x, dmd_y)
+#        dmd_text = "DMD_X: %.2f  DMD_Y: %.2f \n"%(dmd_x, dmd_y)
+        dmd_text = "DMD_X: %i  DMD_Y: %i \n"%(np.round(dmd_x), round(dmd_y))
         text = "X: %.2f  Y: %.2f  Value: %s" % (
             fits_x, fits_y, value)
         
@@ -1490,7 +1529,7 @@ class SAMOS_Main(object):
         y_c = point.points[0][1]-1
         #create area to search, using astropy instead of ginga (still unclear how you do it with ginga)
         r = RectanglePixelRegion(center=PixCoord(x=round(x_c), y=round(y_c)),
-                                        width=40, height=40,
+                                        width=20, height=20,
                                         angle = 0*u.deg)
         # and we convert it to ginga...
         obj = r2g(r)
@@ -1577,7 +1616,6 @@ class SAMOS_Main(object):
 
     def cleanup_kind(self,kind):
         #check that we have created a compostition of objects:
-        from ginga.canvas import CompoundMixin as CM
         CM.CompoundMixin.is_compound(self.canvas.objects)     # True
 
         #we can find out what are the "points" objects
@@ -1641,10 +1679,7 @@ class SAMOS_Main(object):
 ######
 # from https://sewpy.readthedocs.io/en/latest/
     def run_DaoFind(self):
-        from astropy.stats import sigma_clipped_stats
-        from astropy.io import fits
         self.fullpath_FITSfilename
-        import astropy.wcs as wcs
         ### here is the daophot part of the procedure
         hdu = fits.open(self.fullpath_FITSfilename, logger=self.logger)
 
@@ -1663,17 +1698,14 @@ class SAMOS_Main(object):
         
         #2d background estimate
         # FROM https://photutils.readthedocs.io/en/stable/background.html
-        from astropy.stats import SigmaClip
-        from photutils.background import Background2D, MedianBackground
         sigma_clip = SigmaClip(sigma=3.)
         bkg_estimator = MedianBackground()
         bkg = Background2D(data, (50, 50), filter_size=(3, 3), sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
         median = bkg.background    
-        import matplotlib.pyplot as plt
+
         plt.imshow(bkg.background, origin='lower', cmap='Greys_r', interpolation='nearest')
         
         
-        from photutils.detection import DAOStarFinder
         daofind = DAOStarFinder(fwhm=3.0, threshold=3.*std)  
         sources = daofind(data - median)  
         for col in sources.colnames:  
@@ -1795,7 +1827,7 @@ class SAMOS_Main(object):
         head, tail = os.path.split(filename)
         self.textbox_filename.insert(tk.END, tail)
         
-        import csv
+
         myList = []
 
         with open (filename,'r') as file:
@@ -1851,6 +1883,8 @@ class SAMOS_Main(object):
         slit_shape = np.ones((1080,2048)) # This is the size of the DC2K
         for i in table.index:
            slit_shape[x1[i]:x2[i],y1[i]:y2[i]]=0
+        DMD.initialize()
+        DMD._open()
         DMD.apply_shape(slit_shape)
         
         # Create a photoimage object of the image in the path
@@ -1862,7 +1896,24 @@ class SAMOS_Main(object):
         #Add image to the Canvas Items
         print('img =', self.img)
         self.canvas.create_image(104,128,image=self.img)
-     
+
+
+    """
+    Generic File Writer
+    02/21/23 mr - to be tested!
+    """
+    def save(file_type):
+        if file_type == None:
+            files = [('All Files', '*.*')] 
+        elif file_type == 'py':
+            files = [('Python Files', '*.py')]
+        elif file_type == 'txt':
+            files == ('Text Document', '*.txt')
+        elif file_type == 'csv':   
+            files == ('DMD grid', '*.csv')
+        file = asksaveasfile(filetypes = files, defaultextension = files)
+      
+        #btn = ttk.Button(root, text = 'Save', command = lambda : save())        
 
 ######
 def main(options, args):
@@ -1881,7 +1932,7 @@ def main(options, args):
 if __name__ == "__main__":
 
     # Parse command line options
-    from argparse import ArgumentParser
+
 
     argprs = ArgumentParser()
 

@@ -92,7 +92,7 @@ class SlitTableView(tk.Tk):
                      show_headers_if_not_sheet = True, redraw = False)
 
         stab.grid()
-        stab.insert_row(values=list(range(0,15)),redraw=True)
+        #stab.insert_row(values=list(range(0,15)),redraw=True)
         self.stab = stab
 
             
@@ -113,10 +113,7 @@ class SlitTableView(tk.Tk):
 
         """
         
-        #if type(obj)==ginga.canvas.types.basic.Rectangle:
-        #    obj = g2r(obj)
-            # turn into ap_region for easier/consistent handling
-        
+      
         obj_num = len(self.slitDF.index.values)+1
         
         x, y = obj.center.x, obj.center.y

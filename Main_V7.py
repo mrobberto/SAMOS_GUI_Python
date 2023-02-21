@@ -38,7 +38,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename
 
-import regions
+#import regions
 from regions import Regions
 from regions import PixCoord, RectanglePixelRegion, PointPixelRegion, RegionVisual
 
@@ -96,15 +96,25 @@ from SAMOS_MOTORS_dev.Class_PCM  import Class_PCM
 Motors  = Class_PCM()
 from SAMOS_MOTORS_dev.SAMOS_MOTORS_GUI_dev  import Window as SM_GUI
 from SAMOS_DMD_dev.Class_DMD import DigitalMicroMirrorDevice as DMD
+from SAMOS_DMD_dev.Class_DMD_dev import DigitalMicroMirrorDevice
+DMD = DigitalMicroMirrorDevice()#config_id='pass') 
+
 from SAMOS_DMD_dev.SAMOS_DMD_GUI_dev import GUI_DMD 
 from SAMOS_SOAR_dev.tk_class_SOAR_V0 import SOAR as SOAR
 from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
+
+from SAMOS_DMD_dev.CONVERT.CONVERT_class import CONVERT 
+convert = CONVERT()
+
+from SlitTableViewer import SlitTableView as STView
+
 #from ginga.misc import widgets 
 #import PCM_module_GUI as Motors
 
 #text format for writing new info to header. Global var
 param_entry_format = '[Entry {}]\nType={}\nKeyword={}\nValue="{}"\nComment="{}\n"'
 
+#SlitTabView = STView()
 
 class SAMOS_Main(object):
 
@@ -114,6 +124,8 @@ class SAMOS_Main(object):
         self.drawcolors = colors.get_colors()
 #        self.drawcolors = ['white', 'black', 'red', 'yellow', 'blue', 'green']
         self.canvas_types = get_canvas_types()
+        
+        # table widget to keep track of slit regions
         
         root = tk.Tk()
         root.title("SAMOS")
@@ -738,6 +750,8 @@ class SAMOS_Main(object):
         button_push_slits =  tk.Button(labelframe_DMD, text="Slits -> DMD", bd=3, command=self.push_slits)
         button_push_slits.place(x=0,y=125)
 
+
+  
 ####
 # LOAD BUTTONS
 ###
@@ -765,8 +779,6 @@ class SAMOS_Main(object):
 
 
 
-
-
     def regfname_handle_focus_out(self,_):
         
         current_text = self.regfname_entry.get()
@@ -787,11 +799,15 @@ class SAMOS_Main(object):
 
 
     def write_slits(self):
-        
+        # when writing a new DMD pattern, put it in the designated directory
+        # don't want to clutter working dir.
+        # At SOAR, this should be cleared out every night for the next observer
         created_patterns_path = path / Path("DMD_PATTERNS/")
         pattern_name = self.regfname_entry.get()
         
         if (pattern_name.strip(" ") == "") or (pattern_name == "enter pattern name"):
+            # if there is no pattern name provided, use a default based on 
+            # number of patterns already present
             num_patterns_thus_far = len(os.listdir(created_patterns_path))
             pattern_name = "pattern_reg{}.reg".format(num_patterns_thus_far)
             
@@ -810,10 +826,7 @@ class SAMOS_Main(object):
             self.display_region_file(regfileName)
         pass
     
-    
-    def push_slits(self):
-        pass
-    
+
     def display_region_file(self, regfileName):
         regfile = open(regfileName, "r")
         
@@ -821,6 +834,12 @@ class SAMOS_Main(object):
         [ap_region.add_region(self.canvas, reg) for reg in loaded_regions]
         pass
 
+    
+    
+    def push_slits(self):
+        # push selected slits to DMD pattern
+        
+        pass
 #        IPs = Config.load_IP_user(self)
         #print(IPs)
 # =============================================================================
@@ -1343,8 +1362,6 @@ class SAMOS_Main(object):
         
         #2, Extract the slits and convert pixel->DMD values
         
-        from SAMOS_DMD_dev.Class_DMD_dev import DigitalMicroMirrorDevice
-        dmd = DigitalMicroMirrorDevice()#config_id='pass') 
         dmd.initialize()
         dmd._open()
         
@@ -1383,6 +1400,8 @@ class SAMOS_Main(object):
         
 
     def cursor_cb(self, viewer, button, data_x, data_y):
+        
+       
         """This gets called when the data position relative to the cursor
         changes.
         """
@@ -1397,7 +1416,8 @@ class SAMOS_Main(object):
             value = None
 
         fits_x, fits_y = data_x + 1, data_y + 1
-
+        
+        dmd_x, dmd_y = convert.CCD2DMD(fits_x, fits_y)
         # Calculate WCS RA
         try:
             # NOTE: image function operates on DATA space coords
@@ -1415,9 +1435,12 @@ class SAMOS_Main(object):
             #    str(e)))
             ra_txt = 'BAD WCS'
             dec_txt = 'BAD WCS'
-
-        text = "RA: %s  DEC: %s  X: %.2f  Y: %.2f  Value: %s" % (
-            ra_txt, dec_txt, fits_x, fits_y, value)
+        coords_text = "RA: %s  DEC: %s \n"%(ra_txt, dec_txt)
+        dmd_text = "DMD_X: %.2f  DMD_Y: %.2f \n"%(dmd_x, dmd_y)
+        text = "X: %.2f  Y: %.2f  Value: %s" % (
+            fits_x, fits_y, value)
+        
+        text = coords_text + dmd_text + text
         self.readout.config(text=text)
 
     def quit(self, root):
@@ -1435,22 +1458,27 @@ class SAMOS_Main(object):
         obj = canvas.get_object_by_tag(tag)
         obj.add_callback('pick-down', self.pick_cb, 'down')
         obj.add_callback('pick-up', self.pick_cb, 'up')
-        obj.add_callback('pick-move', self.pick_cb, 'move')
-        obj.add_callback('pick-hover', self.pick_cb, 'hover')
-        obj.add_callback('pick-enter', self.pick_cb, 'enter')
-        obj.add_callback('pick-leave', self.pick_cb, 'leave')
+        #obj.add_callback('pick-move', self.pick_cb, 'move')
+        #obj.add_callback('pick-hover', self.pick_cb, 'hover')
+        #obj.add_callback('pick-enter', self.pick_cb, 'enter')
+        #obj.add_callback('pick-leave', self.pick_cb, 'leave')
         obj.add_callback('pick-key', self.pick_cb, 'key')
         obj.pickable = True
         obj.add_callback('edited', self.edit_cb)
+        #obj.add_callback('pick-key',self.delete_obj_cb, 'key')
         kind = self.wdrawtype.get()
         print("kind: ", kind)
         if self.vslit.get() != 0 and kind == 'point':
             true_kind='Slit'
             print("It is a slit")
             print("Handle the rectangle as a slit")
-            self.slit_handler(obj)    
+            self.slit_handler(obj)
+        
+        #self.SlitTabView.add_slit_obj(obj, self.fitsimage)
+        #print(self.SlitTabView.slitDF)
         #else:
         #    return
+
         
         
     def slit_handler(self, point):
@@ -1461,8 +1489,8 @@ class SAMOS_Main(object):
         x_c = point.points[0][0]-1#really needed?
         y_c = point.points[0][1]-1
         #create area to search, using astropy instead of ginga (still unclear how you do it with ginga)
-        r = regions.RectanglePixelRegion(center=regions.PixCoord(x=round(x_c), y=round(y_c)),
-                                        width=10, height=10,
+        r = RectanglePixelRegion(center=PixCoord(x=round(x_c), y=round(y_c)),
+                                        width=40, height=40,
                                         angle = 0*u.deg)
         # and we convert it to ginga...
         obj = r2g(r)
@@ -1519,29 +1547,32 @@ class SAMOS_Main(object):
         slit_box = self.canvas.get_draw_class('rectangle')
         slit_h=3
         slit_w=7
-        #self.canvas.add(slit_box(x1=objs[0].objx+x1-slit_w,y1=objs[0].objy+y1-slit_h,x2=objs[0].objx+x1+slit_w,y2=objs[0].objy+y1+slit_h,
-        #                width=100,
-        #                height=30,
-        #                angle = 0*u.deg))
-        self.canvas.add(slit_box(x=objs[0].objx,y=objs[0].objy,
-                        xradius=100,
-                        yradius=30,
+        self.canvas.add(slit_box(x1=objs[0].objx+x1-slit_w,y1=objs[0].objy+y1-slit_h,x2=objs[0].objx+x1+slit_w,y2=objs[0].objy+y1+slit_h,
+                        width=100,
+                        height=30,
                         angle = 0*u.deg))
         print("slit added")
-        
         #self.cleanup_kind('point')
         #self.cleanup_kind('box')
 
 
     def pick_cb(self, obj, canvas, event, pt, ptype):
+        
         print("pick event '%s' with obj %s at (%.2f, %.2f)" % (
             ptype, obj.kind, pt[0], pt[1]))
         self.logger.info("pick event '%s' with obj %s at (%.2f, %.2f)" % (
             ptype, obj.kind, pt[0], pt[1]))
+        
+        try:
+            if event.key=='d':
+                canvas.delete_object(obj)
+        except:
+            pass
         return True
     
     def edit_cb(self, obj):
         self.logger.info("object %s has been edited" % (obj.kind))
+
         return True
 
     def cleanup_kind(self,kind):
@@ -1570,7 +1601,10 @@ class SAMOS_Main(object):
     def donothing(self):
         pass
 
-     
+######
+    def show_slit_table(self):
+        self.SlitTabView = STView()
+        
 ######
     def load_Astrometry(self):
         #=> send center and list coodinates to Astrometry, and start Astrometry!

@@ -479,7 +479,7 @@ class SAMOS_Main(object):
         entry_Dark_MasterFile = tk.Entry(labelframe_Dark, width=11,  bd =3, textvariable=self.Dark_MasterFile)
         entry_Dark_MasterFile.place(x=120, y=68)
 
-        button_ExpStart=  tk.Button(labelframe_Dark, text="START", bd=3, bg='#0052cc',font=("Arial", 24),
+        button_ExpStart = tk.Button(labelframe_Dark, text="START", bd=3, bg='#0052cc',font=("Arial", 24),
                                           command=self.expose_dark)
         button_ExpStart.place(x=75,y=95)
 

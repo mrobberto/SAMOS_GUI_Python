@@ -30,6 +30,7 @@ sys.path.append(parent_dir)
 
 
 import tksheet
+from tksheet import Sheet
 
 import ginga
 from ginga.util.ap_region import astropy_region_to_ginga_canvas_object as r2g
@@ -65,7 +66,7 @@ convert = CONVERT()
 
 class SlitTableView(tk.Tk):
     
-    def __init__(self):
+    def __init__(self,): #master):
     
         super().__init__()#master = master) 
     # changing the title of our master widget      
@@ -91,7 +92,6 @@ class SlitTableView(tk.Tk):
                      show_headers_if_not_sheet = True, redraw = False)
 
         stab.grid()
-        #stab.set_sheet_data([[f"{ri+cj}" for cj in range(4)] for ri in range(1)])
         stab.insert_row(values=list(range(0,15)),redraw=True)
         self.stab = stab
 
@@ -164,7 +164,7 @@ class SlitTableView(tk.Tk):
         
 #Root window created. 
 #Here, that would be the only window, but you can later have windows within windows.
-root = SlitTableView()
+#root = SlitTableView()
 
 #size of the window
 #root.geometry("400x330")
@@ -173,4 +173,4 @@ root = SlitTableView()
 #app = Tk.Window(root)    
 
 #Finally, show it and begin the mainloop.
-root.mainloop()
+#root.mainloop()

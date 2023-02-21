@@ -38,7 +38,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename
 
-import regions
+#import regions
 from regions import Regions
 from regions import PixCoord, RectanglePixelRegion, PointPixelRegion, RegionVisual
 
@@ -96,18 +96,25 @@ from SAMOS_MOTORS_dev.Class_PCM  import Class_PCM
 Motors  = Class_PCM()
 from SAMOS_MOTORS_dev.SAMOS_MOTORS_GUI_dev  import Window as SM_GUI
 from SAMOS_DMD_dev.Class_DMD import DigitalMicroMirrorDevice as DMD
+from SAMOS_DMD_dev.Class_DMD_dev import DigitalMicroMirrorDevice
+DMD = DigitalMicroMirrorDevice()#config_id='pass') 
+
 from SAMOS_DMD_dev.SAMOS_DMD_GUI_dev import GUI_DMD 
 from SAMOS_SOAR_dev.tk_class_SOAR_V0 import SOAR as SOAR
 from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
 
 from SAMOS_DMD_dev.CONVERT.CONVERT_class import CONVERT 
 convert = CONVERT()
+
+from SlitTableViewer import SlitTableView as STView
+
 #from ginga.misc import widgets 
 #import PCM_module_GUI as Motors
 
 #text format for writing new info to header. Global var
 param_entry_format = '[Entry {}]\nType={}\nKeyword={}\nValue="{}"\nComment="{}\n"'
 
+#SlitTabView = STView()
 
 class SAMOS_Main(object):
 
@@ -117,6 +124,8 @@ class SAMOS_Main(object):
         self.drawcolors = colors.get_colors()
 #        self.drawcolors = ['white', 'black', 'red', 'yellow', 'blue', 'green']
         self.canvas_types = get_canvas_types()
+        
+        # table widget to keep track of slit regions
         
         root = tk.Tk()
         root.title("SAMOS")
@@ -741,6 +750,8 @@ class SAMOS_Main(object):
         button_push_slits =  tk.Button(labelframe_DMD, text="Slits -> DMD", bd=3, command=self.push_slits)
         button_push_slits.place(x=0,y=125)
 
+
+  
 ####
 # LOAD BUTTONS
 ###
@@ -1351,8 +1362,6 @@ class SAMOS_Main(object):
         
         #2, Extract the slits and convert pixel->DMD values
         
-        from SAMOS_DMD_dev.Class_DMD_dev import DigitalMicroMirrorDevice
-        dmd = DigitalMicroMirrorDevice()#config_id='pass') 
         dmd.initialize()
         dmd._open()
         
@@ -1463,7 +1472,10 @@ class SAMOS_Main(object):
             true_kind='Slit'
             print("It is a slit")
             print("Handle the rectangle as a slit")
-            self.slit_handler(obj)    
+            self.slit_handler(obj)
+        
+        #self.SlitTabView.add_slit_obj(obj, self.fitsimage)
+        #print(self.SlitTabView.slitDF)
         #else:
         #    return
 
@@ -1477,8 +1489,8 @@ class SAMOS_Main(object):
         x_c = point.points[0][0]-1#really needed?
         y_c = point.points[0][1]-1
         #create area to search, using astropy instead of ginga (still unclear how you do it with ginga)
-        r = regions.RectanglePixelRegion(center=regions.PixCoord(x=round(x_c), y=round(y_c)),
-                                        width=10, height=10,
+        r = RectanglePixelRegion(center=PixCoord(x=round(x_c), y=round(y_c)),
+                                        width=40, height=40,
                                         angle = 0*u.deg)
         # and we convert it to ginga...
         obj = r2g(r)
@@ -1551,8 +1563,11 @@ class SAMOS_Main(object):
         self.logger.info("pick event '%s' with obj %s at (%.2f, %.2f)" % (
             ptype, obj.kind, pt[0], pt[1]))
         
-        if event.key=='d':
-            canvas.delete_object(obj)
+        try:
+            if event.key=='d':
+                canvas.delete_object(obj)
+        except:
+            pass
         return True
     
     def edit_cb(self, obj):
@@ -1586,7 +1601,10 @@ class SAMOS_Main(object):
     def donothing(self):
         pass
 
-     
+######
+    def show_slit_table(self):
+        self.SlitTabView = STView()
+        
 ######
     def load_Astrometry(self):
         #=> send center and list coodinates to Astrometry, and start Astrometry!

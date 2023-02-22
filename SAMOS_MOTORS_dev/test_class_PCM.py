@@ -50,7 +50,7 @@ PCM.power_on()
 #PCM.go_to_step("FW2","12345")
 # 
 #print('\n move to position A1: (46667)')
-#PCM.move_FW_pos_wheel("A1")
+PCM.move_FW_pos_wheel("A1")
 #PCM.move_FW_pos_wheel("A2")
 #PCM.move_FW_pos_wheel("A3") 
 #PCM.move_FW_pos_wheel("A4")

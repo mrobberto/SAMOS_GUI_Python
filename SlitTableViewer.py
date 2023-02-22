@@ -132,8 +132,15 @@ class SlitTableView(tk.Tk):
         fits_x1, fits_y1 = x1+1, y1+1
         
         dmd_x, dmd_y = convert.CCD2DMD(fits_x, fits_y)
+        dmd_x, dmd_y= int(np.floor(dmd_x)), int(np.floor(dmd_y))
+
         dmd_x0, dmd_y0 = convert.CCD2DMD(fits_x0, fits_y0)
+        dmd_x0, dmd_y0 = int(np.floor(dmd_x0)), int(np.floor(dmd_y0))
+        
         dmd_x1, dmd_y1 = convert.CCD2DMD(fits_x1, fits_y1)
+        dmd_x1, dmd_y1 = int(np.floor(dmd_x1)), int(np.floor(dmd_y1))
+
+        
         # Calculate WCS RA
         try:
             # NOTE: image function operates on DATA space coords
@@ -143,7 +150,7 @@ class SlitTableView(tk.Tk):
                 return
             ra, dec = image.pixtoradec(fits_x, fits_y,
                                                format='float', coords='fits')
-            
+            ra, dec = np.round(ra,6), np.round(dec,6)
         except Exception as e:
             #self.logger.warning("Bad coordinate conversion: %s" % (
             #    str(e)))

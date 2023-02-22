@@ -28,13 +28,17 @@ from matplotlib.patches import Rectangle
 
 
 #from ginga.tkw.ImageViewTk import CanvasView
-#from ginga.canvas.CanvasObject import get_canvas_types
-#from ginga.misc import log
-#from ginga.util.loader import load_data
+from ginga.canvas.CanvasObject import get_canvas_types
+from ginga.misc import log
+from ginga.util.loader import load_data
 from ginga.util import io_fits
 
+from ginga.qtw.QtHelp import QtGui, QtCore, set_default_opengl_context
+from ginga import colors
+from ginga.qtw.ImageViewQt import CanvasView
+
 from ginga.AstroImage import AstroImage
-#img = AstroImage()
+img = AstroImage()
 from astropy.io import fits
 
 import tkinter as tk
@@ -55,13 +59,15 @@ from astropy.visualization import simple_norm
 sys.path.insert(0,"../")
 import setup_slits
 importlib.reload(setup_slits)
-from setup_slits import DMDSlit
-#ƒbfrom setup_slits import DMD_Pattern_from_SlitList
+from setup_slits import DMDSlit, DMD_Pattern_from_SlitList
 
 
 
 matplotlib.pyplot.ion()
 
+
+import warnings
+warnings.filterwarnings('ignore')
 global pix_scale_dmd
 pix_scale_dmd = 1080/1024 # mirrors per pixel, always the same.
 
@@ -85,46 +91,92 @@ local_dir = str(path.absolute())
 sys.path.append(local_dir)
 
 # can be changed to any image
-test_file_name = "./fdt_grid_54x54_inv_img_with_dmd_wcs.fits"
+test_file_name = "../../IMAGES/grid11x11"
 
-class MyDMD(object):
-    def __init__(self, logger):
+ccd2dmd_file = "./DMD_Mapping_WCS.fits"
+
+class FitsViewer(QtGui.QMainWindow):
+    def __init__(self, logger, render='widget'):
 
         self.logger = logger
-        self.root = root
+        self.main = main
         self.test_file_name = test_file_name
         self.SlitList = []
+        self.drawcolors = colors.get_colors()
+        self.dc = get_canvas_types()
+        
+        hdul = fits.open(ccd2dmd_file)
+        wcshead = hdul[0].header
+        self.ccd2dmd_wcs = WCS(wcshead,relax=True)
+        self.wcshead = wcshead
         
         
-        hdul = fits.open(self.test_file_name)
-        imhead = hdul[0].header
-        imdata = hdul[0].data
-        self.ccd2dmd_wcs = WCS(imhead,relax=True)
-        self.imhead = imhead
-        self.imdata = imdata
-        #self.dc = get_canvas_types()
-
-        """
-        Box for the calibration image taaken by the CCD
-        """
-        vbox = tk.Frame(root, relief=tk.RAISED, borderwidth=1)
+        
+        #vbox = tk.Frame(main, relief=tk.RAISED, borderwidth=1)
 #        vbox.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-#        vbox.pack(side=tk.TOP)
-        vbox.place(x=5, y=0, anchor="nw")#, width=500, height=800)
+        #vbox.pack(side=tk.TOP)
+        #vbox.place(x=5, y=0, anchor="nw")#, width=500, height=800)
+        #self.vb = vbox
+        
+        fi = CanvasView(logger, render=render)
+        fi.enable_autocuts('on')
+        fi.set_autocut_params('zscale',)
+        fi.enable_autozoom('on')
+        fi.set_zoom_algorithm('rate')
+        fi.set_zoomrate(1.4)
+        fi.show_pan_mark(True)
+        fi.add_callback('drag-drop', self.drop_file_cb)
+        fi.add_callback('cursor-changed', self.cursor_cb)
+        fi.set_bg(0.2, 0.2, 0.2)
+        fi.ui_set_active(True)
+        self.fitsimage = fi
+
+        bd = fi.get_bindings()
+        bd.enable_all(True)
+
+        # canvas that we will draw on
+        main_canvas = self.dc.DrawingCanvas()
+        main_canvas.enable_draw(True)
+        main_canvas.enable_edit(True)
+        main_canvas.set_drawtype('rectangle', color='lightblue')
+        main_canvas.register_for_cursor_drawing(fi)
+        main_canvas.add_callback('draw-event', self.draw_cb)
+        main_canvas.set_draw_mode('draw')
+        main_canvas.set_surface(fi)
+        main_canvas.ui_set_active(True)
+        self.main_canvas = main_canvas
+
+        # add our new canvas to viewers default canvas
+        fi.get_canvas().add(main_canvas)
+
+        self.drawtypes = main_canvas.get_drawtypes()
+        self.drawtypes.sort()
+        
+        
+        # add little mode indicator that shows keyboard modal states
+        fi.show_mode_indicator(True, corner='ur')
+
+        w = fi.get_widget()
+        w.resize(512, 512)
+
+        vbox = QtGui.QVBoxLayout()
+        vbox.setContentsMargins(QtCore.QMargins(2, 2, 2, 2))
+        vbox.setSpacing(1)
+        vbox.addWidget(w, stretch=1)
         self.vb = vbox
         
-        """
-        fig is an empty object, class Figure: "instantiation" of fig
+        self.readout = QtGui.QLabel("")
+        vbox.addWidget(self.readout, stretch=0,
+                       alignment=QtCore.Qt.AlignCenter)
+
+        
         """
         fig = Figure(figsize=(8,8))#,tight_layout=True,)
         ax = fig.add_axes([0,0,1,1],frameon=False)
         self.fig = fig
         self.ax = ax
         
-        """
-        main canvas is an instatiation of FigureCanvasTkAgg class. 
-        This is a special canvas upon which Matplotlib graphics can be plotted
-        """
+
         main_canvas = FigureCanvasTkAgg(fig, vbox,)
         main_canvas.draw()
         main_canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
@@ -133,21 +185,24 @@ class MyDMD(object):
         main_canvas.mpl_connect("button_press_event",self.zoomimage)
         
         
-        self.readout = tk.Label(root, text='')
+        self.readout = tk.Label(main, text='')
         self.readout.pack(side=tk.BOTTOM, fill=tk.X, expand=0)
-        
-        self.vbox_tab = tk.Frame(root)
-        self.vbox_tab.pack(side=tk.RIGHT)
-        self.vbox_tab.place(x=600,y=290,width=700,height=300)
-        
-        
+        """
+        #self.vbox_tab = tk.Frame(main)
+        #self.vbox_tab.pack(side=tk.RIGHT)
+        #self.vbox_tab.place(x=600,y=290,width=700,height=300)
         
         
         
-        vbox_zoom = tk.Frame(root, relief=tk.RAISED, borderwidth=1)
-        vbox_zoom.pack(side=tk.TOP)
-        vbox_zoom.place(x=805,y=0, anchor="ne")
+#        vbox_zoom = tk.Frame(main, relief=tk.RAISED, borderwidth=1)
+#        vbox_zoom.pack(side=tk.TOP)
+#        vbox_zoom.place(x=805,y=0, anchor="ne")
         
+        
+        vbox_zoom = QtGui.QVBoxLayout()
+        vbox_zoom.setContentsMargins(QtCore.QMargins(2, 2, 2, 2))
+        vbox_zoom.setSpacing(1)
+        vbox_zoom.addWidget(w, stretch=1)
         
         zfig = Figure(figsize=(3,3))#,tight_layout=True,)
         
@@ -164,7 +219,7 @@ class MyDMD(object):
         self.zax = zax
         
        
-        vbox_zoom_slit_x0 = tk.Frame(root)
+        vbox_zoom_slit_x0 = tk.Frame(main)
         vbox_zoom_slit_x0.pack(anchor='n')
         vbox_zoom_slit_x0.place(x=805,y=30)
         spinvar_zx0 = tk.DoubleVar()
@@ -175,12 +230,12 @@ class MyDMD(object):
         slit_x0_spinbox = tk.Spinbox(vbox_zoom_slit_x0,from_=1,to=1025,
                                      textvariable=self.spinvar_zx0,
                                      command=self.edit_slit_mpl,width=5,
-                                     increment=0.1)
+                                     increment=1)
         slit_x0_spinbox.pack(side=tk.TOP,fill=tk.BOTH,padx=0)
         
         #slit_x0_spinbox.place(x=600,y=200)
         
-        vbox_zoom_slit_x1 = tk.Frame(root)
+        vbox_zoom_slit_x1 = tk.Frame(main)
         vbox_zoom_slit_x1.pack(anchor='n')
         vbox_zoom_slit_x1.place(x=805,y=60)
         spinvar_zx1 = tk.DoubleVar()
@@ -191,7 +246,7 @@ class MyDMD(object):
         slit_x1_spinbox = tk.Spinbox(vbox_zoom_slit_x1,from_=1,to=1025,
                                      textvariable=self.spinvar_zx1,
                                      command=self.edit_slit_mpl, width=5,
-                                     increment=0.1)
+                                     increment=1)
         slit_x1_spinbox.pack(side=tk.BOTTOM,fill=tk.BOTH)
         
         
@@ -200,7 +255,7 @@ class MyDMD(object):
         
         
        
-        vbox_zoom_slit_y0 = tk.Frame(root)
+        vbox_zoom_slit_y0 = tk.Frame(main)
         vbox_zoom_slit_y0.pack(anchor='n')
         vbox_zoom_slit_y0.place(x=805,y=90)
         spinvar_zy0 = tk.DoubleVar()
@@ -211,10 +266,10 @@ class MyDMD(object):
         slit_y0_spinbox = tk.Spinbox(vbox_zoom_slit_y0,from_=1,to=1025,
                                      textvariable=self.spinvar_zy0,
                                      command=self.edit_slit_mpl,width=5,
-                                     increment=0.1)
+                                     increment=1)
         slit_y0_spinbox.pack(side=tk.TOP,fill=tk.BOTH,padx=0)
         
-        vbox_zoom_slit_y1 = tk.Frame(root)
+        vbox_zoom_slit_y1 = tk.Frame(main)
         vbox_zoom_slit_y1.pack(anchor='s')
         vbox_zoom_slit_y1.place(x=805,y=120)
         spinvar_zy1 = tk.DoubleVar()
@@ -225,7 +280,7 @@ class MyDMD(object):
         slit_y1_spinbox = tk.Spinbox(vbox_zoom_slit_y1,from_=1,to=1025,
                                      textvariable=self.spinvar_zy1,
                                      command=self.edit_slit_mpl, width=5,
-                                     increment=0.1)
+                                     increment=1)
         slit_y1_spinbox.pack(side=tk.BOTTOM,fill=tk.BOTH)
         
         self.slit_y0_spinbox = slit_y0_spinbox
@@ -235,17 +290,17 @@ class MyDMD(object):
  
         
         
-        self.slit_readout = tk.Label(root, text='')
-        self.slit_readout.pack(side=tk.TOP, fill=tk.X, expand=0)
-        self.slit_readout.place(x=600,y=220)
+ #       self.slit_readout = tk.Label(main, text='')
+ #       self.slit_readout.pack(side=tk.TOP, fill=tk.X, expand=0)
+ #       self.slit_readout.place(x=600,y=220)
         
-        slit_bbox = tk.Frame(root)
+        slit_bbox = tk.Frame(main)
         slit_bbox.pack(side=tk.RIGHT,fill=tk.X, expand=0)
         slit_bbox.place(x=805,y=150)
         slit_button = tk.Button(slit_bbox, text="Add Slit",command=self.save_slit)
         slit_button.pack(side=tk.RIGHT)
         
-        hbox1 = tk.Frame(root)
+        hbox1 = tk.Frame(main)
         hbox1.pack(side=tk.BOTTOM, fill=tk.X, expand=0)
         
         
@@ -253,7 +308,7 @@ class MyDMD(object):
                                command=self.load_file)
         wopen.pack(side=tk.LEFT,fill="none")
         
-        
+        self.hbox1 = hbox1
         
     def load_file(self):
         #FITSfiledir = './fits_image/'
@@ -261,8 +316,14 @@ class MyDMD(object):
         #self.fullpath_FITSfilename = FITSfiledir + (os.listdir(FITSfiledir))[0] 
             # './fits_image/cutout_rebined_resized.fits'
 #        image = load_data(self.test_file_name, logger=self.logger)
-        image = io_fits.load_file(test_file_name)
+
+        self.browse_fits_files = tk.filedialog.askopenfilename(initialdir = "./",filetypes=[("FITS files","*fits")], 
+                    title = "Select a FITS File",parent=self.hbox1)
         
+        
+        image = io_fits.load_file(self.browse_fits_files)
+        
+        self.ImHead = image.as_hdu().header        
         self.AstroImage = image    #make the AstroImage available
         ImData = image.as_nddata().data
         self.ImData = ImData
@@ -272,7 +333,7 @@ class MyDMD(object):
         self.main_canvas.draw()
         #self.fitsimage.set_image(image)
             # passes the image to the viewer through the set_image() method
-        self.root.title(self.test_file_name)
+        self.main.title(self.test_file_name)
         
 
 
@@ -357,6 +418,9 @@ class MyDMD(object):
         
 
         print("dmd0 coords",dmd_x0,dmd_y0)
+        
+        
+        
         # pix_scale_dmd is 1080 mirrors / 1024 (active) pixels
         # nominal slit width is 2 mirrors
         
@@ -365,6 +429,7 @@ class MyDMD(object):
         
         pixwidth = 2*pix_scale_dmd #size of slit will be shown in pixels
         pixlength = 7*pix_scale_dmd
+        
         
         
         zx1 = round(pixlength+zx0,1)
@@ -513,10 +578,45 @@ class MyDMD(object):
         
         
     #def creat_DMD_pattern_tables(self):
-        
-        
+    def set_drawparams(self, kind):
+        index = self.wdrawtype.currentIndex()
+        kind = self.drawtypes[index]
+        index = self.wdrawcolor.currentIndex()
+        fill = (self.wfill.checkState() != 0)
+        alpha = self.walpha.value()
 
-        
+        params = {'color': self.drawcolors[index],
+                  'alpha': alpha,
+                  }
+        if kind in ('circle', 'rectangle', 'polygon', 'triangle',
+                    'righttriangle', 'ellipse', 'square', 'box'):
+            params['fill'] = fill
+            params['fillalpha'] = alpha
+
+        self.canvas.set_drawtype(kind, **params)
+
+    def clear_canvas(self):
+        self.canvas.delete_all_objects()
+
+    def load_file(self, filepath):
+        image = load_data(filepath, logger=self.logger)
+
+        self.fitsimage.set_image(image)
+        self.setWindowTitle(filepath)
+
+    def open_file(self):
+        res = QtGui.QFileDialog.getOpenFileName(self, "Open FITS file",
+                                                ".", "FITS files (*.fits)")
+        if isinstance(res, tuple):
+            fileName = res[0]
+        else:
+            fileName = str(res)
+        if len(fileName) != 0:
+            self.load_file(fileName)
+
+    def drop_file_cb(self, fitsimage, paths):
+        fileName = paths[0]
+        self.load_file(fileName)
         
         
     def cursor_cb(self, event):
@@ -565,20 +665,110 @@ class MyDMD(object):
 
             text_pix = "imX: %.2f  imY: %.2f  Value: %s" % (fits_x, fits_y, value) +"\n"
             text_mir = "dmdX: %.2f  dmdY: %.2f " %(dmd_x*3600, dmd_y*3600)
-            self.readout.config(text=text_pix+text_mir)
-
+            #self.readout.config(text=text_pix+text_mir)
+            text = text_pix + text_mir
+            self.readout.setText(text)
         except Exception:
             value = None
             fits_x, fits_y = None, None
             dmd_x, dmd_y = None, None
 
+
+    def set_mode_cb(self, mode, tf):
+        self.logger.info("canvas mode changed (%s) %s" % (mode, tf))
+        if not (tf is False):
+            self.canvas.set_draw_mode(mode)
+        return True
+    
+    def draw_cb(self, canvas, tag):
+        obj = canvas.get_object_by_tag(tag)
+        obj.add_callback('pick-down', self.pick_cb, 'down')
+        obj.add_callback('pick-up', self.pick_cb, 'up')
+        obj.add_callback('pick-move', self.pick_cb, 'move')
+        obj.add_callback('pick-hover', self.pick_cb, 'hover')
+        obj.add_callback('pick-enter', self.pick_cb, 'enter')
+        obj.add_callback('pick-leave', self.pick_cb, 'leave')
+        obj.add_callback('pick-key', self.pick_cb, 'key')
+        obj.pickable = True
+        obj.add_callback('edited', self.edit_cb)
+    
+    def pick_cb(self, obj, canvas, event, pt, ptype):
+        self.logger.info("pick event '%s' with obj %s at (%.2f, %.2f)" % (
+            ptype, obj.kind, pt[0], pt[1]))
+        return True
+    
+    def edit_cb(self, obj):
+        self.logger.info("object %s has been edited" % (obj.kind))
+        return True
+    
+    def quit(self, *args):
+        self.logger.info("Attempting to shut down the application...")
+        self.deleteLater()
+
         
-        
+def main(options, args):
+
+    if options.render == 'opengl':
+        set_default_opengl_context()
+
+    #QtGui.QApplication.setGraphicsSystem('raster')
+    app = QtGui.QApplication(args)
+
+    logger = log.get_logger("example2", options=options)
+
+    w = FitsViewer(logger, render=options.render)
+    w.resize(524, 540)
+    w.show()
+    app.setActiveWindow(w)
+    w.raise_()
+    w.activateWindow()
+
+    if len(args) > 0:
+        w.load_file(args[0])
+
+    app.exec_()
 
 
+if __name__ == "__main__":
 
-root=tk.Tk()
-mywin=MyDMD(root)
-root.title('Hello Python')
-root.geometry("1300x800")
-root.mainloop()
+    # Parse command line options
+    from argparse import ArgumentParser
+
+    argprs = ArgumentParser()
+
+    argprs.add_argument("--debug", dest="debug", default=False,
+                        action="store_true",
+                        help="Enter the pdb debugger on main()")
+    argprs.add_argument("-r", "--render", dest="render", default='widget',
+                        help="Set render type {widget|scene|opengl}")
+    argprs.add_argument("--profile", dest="profile", action="store_true",
+                        default=False,
+                        help="Run the profiler on main()")
+    log.addlogopts(argprs)
+
+    (options, args) = argprs.parse_known_args(sys.argv[1:])
+
+    # Are we debugging this?
+    if options.debug:
+        import pdb
+
+        pdb.run('main(options, args)')
+
+    # Are we profiling this?
+    elif options.profile:
+        import profile
+
+        print(("%s profile:" % sys.argv[0]))
+        profile.run('main(options, args)')
+
+    else:
+        main(options, args)
+
+# END
+
+
+#main=tk.Tk()
+#mywin=MyDMD(main)
+#main.title('Hello Python')
+#main.geometry("1300x800")
+#main.mainloop()

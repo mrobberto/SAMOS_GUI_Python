@@ -35,10 +35,17 @@ os.sys.path.append(SF_path)
 
 from SlitTableViewer import SlitTableView as STView
 
+#slitView = STView()
 
-slitdf = STView()
+import tksheet
 
 
+import regions
+from regions import Regions
+from regions import PixCoord, RectanglePixelRegion, PointPixelRegion, RegionVisual
+
+from SAMOS_DMD_dev.CONVERT.CONVERT_class import CONVERT 
+convert = CONVERT()
 x = 500
 y = 700
 width = 50
@@ -48,6 +55,39 @@ viewer = 'test, no canvas viewer'
 
 from regions import PixCoord, RectanglePixelRegion, PointPixelRegion, RegionVisual
 
-rect_obj = RectanglePixelRegion(PixCoord(x=x,y=y), width=width, height=height)
 
-slitdf.add_slit_obj(rect_obj,viewer)
+class NewWindow(tk.Tk):
+    
+    def __init__(self,):# master = None):
+        super().__init__()#(master = master)
+        
+        self.title("New Window")
+        self.geometry("200x200")
+        
+        label = tk.Label(self, text = "New Window")
+        label.pack()
+        
+
+
+        btn = tk.Button(self, text = "Open table window")
+
+        btn.bind("<Button>", self.display_slit_table)
+        btn.pack(pady=10)
+    
+    def display_slit_table(self, event):
+        
+        self.SlitTabView = STView()
+        
+    def add_slit(self, obj, viewer):
+        rect_obj = RectanglePixelRegion(PixCoord(x=x,y=y), width=width, height=height)
+        self.SlitTabView.add_slit_obj(rect_obj, viewer)
+
+
+        
+        
+root = NewWindow()
+
+root.mainloop()
+
+
+

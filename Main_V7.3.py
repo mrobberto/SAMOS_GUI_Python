@@ -96,24 +96,25 @@ from SAMOS_CONFIG_dev.CONFIG_GUI import Config
 #print(Config.return_directories)
 
 from SAMOS_Astrometry_dev.tk_class_astrometry_V4 import Astrometry
-from SAMOS_CCD_dev.GUI_CCD_dev import GUI_CCD
 from SAMOS_Astrometry_dev.skymapper_interrogate import skymapper_interrogate
 
+from SAMOS_CCD_dev.GUI_CCD_dev import GUI_CCD
 from SAMOS_CCD_dev.Class_CCD_dev import Class_Camera as CCD
+
+from SAMOS_MOTORS_dev.SAMOS_MOTORS_GUI_dev  import Window as SM_GUI
 from SAMOS_MOTORS_dev.Class_PCM  import Class_PCM 
 Motors  = Class_PCM()
-from SAMOS_MOTORS_dev.SAMOS_MOTORS_GUI_dev  import Window as SM_GUI
-from SAMOS_DMD_dev.Class_DMD import DigitalMicroMirrorDevice as DMD
-from SAMOS_DMD_dev.Class_DMD_dev import DigitalMicroMirrorDevice
-DMD = DigitalMicroMirrorDevice()#config_id='pass') 
 
 from SAMOS_DMD_dev.SAMOS_DMD_GUI_dev import GUI_DMD 
-from SAMOS_SOAR_dev.tk_class_SOAR_V0 import SOAR as SOAR
-from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
-
+#from SAMOS_DMD_dev.Class_DMD import DigitalMicroMirrorDevice as DMD
+from SAMOS_DMD_dev.Class_DMD_dev import DigitalMicroMirrorDevice
 from SAMOS_DMD_dev.CONVERT.CONVERT_class import CONVERT 
 convert = CONVERT()
+DMD = DigitalMicroMirrorDevice()#config_id='pass') 
 
+from SAMOS_SOAR_dev.tk_class_SOAR_V0 import SOAR as SOAR
+
+from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
 
 from SlitTableViewer import SlitTableView as STView
 
@@ -149,6 +150,11 @@ class SAMOS_Main(object):
         # will be used to write "OtherParameters.txt" 
         self.extra_header_params = 0
         self.header_entry_string = '' #keep string of entries to write to a file after acquisition.
+
+        #define the local directory, absolute so it is not messed up when this is called
+        path = Path(__file__).parent.absolute()
+        self.local_dir = str(path.absolute())
+        sys.path.append(self.local_dir)
 
         #general definition of Master File for display
         FITSfiledir = './fits_image/'
@@ -195,7 +201,7 @@ class SAMOS_Main(object):
 #        label_FW1.place(x=4,y=10)
 
         all_dirs = SF.read_dir_user()
-        filter_data= ascii.read(local_dir+all_dirs['dir_Motors']+'/IDG_Filter_positions.txt')
+        filter_data= ascii.read(self.local_dir+all_dirs['dir_Motors']+'/IDG_Filter_positions.txt')
         filter_names = list(filter_data[0:9]['Filter'])
         print(filter_names)
 
@@ -276,7 +282,7 @@ class SAMOS_Main(object):
 #        labelframe_Grating.place(x=4, y=10)
          
         all_dirs = SF.read_dir_user()
-        Grating_data= ascii.read(local_dir+all_dirs['dir_Motors']+'/IDG_Filter_positions.txt')
+        Grating_data= ascii.read(self.local_dir+all_dirs['dir_Motors']+'/IDG_Filter_positions.txt')
         self.Grating_names = list(Grating_data[14:18]['Filter'])
         self.Grating_positions= list(Grating_data[14:18]['Position'])
 #        print(Grating_names)
@@ -874,7 +880,7 @@ class SAMOS_Main(object):
         print("\nSlits written to region file\n")
 
     def read_slits(self):
-        reg = askopenfilename(filetypes=[("region files", "*.reg")],initialdir=local_dir+'/Astropy Regions')
+        reg = askopenfilename(filetypes=[("region files", "*.reg")],initialdir=self.local_dir+'/Astropy Regions')
         print("trying to read region file")
         if isinstance(reg, tuple):
             regfileName = reg[0]
@@ -1100,7 +1106,7 @@ class SAMOS_Main(object):
     def combine_files(self):
         #this procedure runs after the CCD.expose()
         #to handle the decision of saving all single files or just the averages
-        file_names = local_dir+"/fits_image/setimage_*.fit"
+        file_names = self.local_dir+"/fits_image/setimage_*.fit"
         files = glob.glob(file_names)
         superfile_cube = np.zeros((1032,1056,len(files)))   #note y,x,z
         for i in range(len(files)):
@@ -1111,22 +1117,22 @@ class SAMOS_Main(object):
                    self.var_Dark_saveall.get() == 1 or \
                    self.var_Flat_saveall.get() == 1:
                    #save every single frame
-                    os.rename(files[i],local_dir+"/fits_image/"+self.image_type+"_"+str(i)+".fits")
+                    os.rename(files[i],self.local_dir+"/fits_image/"+self.image_type+"_"+str(i)+".fits")
                 else: 
                     os.remove(files[i])
         superfile = superfile_cube.mean(axis=2)        
         superfile_header = hdu[0].header
-        fits.writeto(local_dir+"/fits_image/super"+self.image_type+".fits",superfile,superfile_header,overwrite=True)
+        fits.writeto(self.local_dir+"/fits_image/super"+self.image_type+".fits",superfile,superfile_header,overwrite=True)
             
     def cleanup_files(self):
-        file_names = local_dir+"/fits_image/"+self.image_type+"_*.fits"
+        file_names = self.local_dir+"/fits_image/"+self.image_type+"_*.fits"
         files = glob.glob(file_names)
         for i in range(len(files)):
              os.remove(files[i])
         
     def handle_dark(self):
-        dark_file = local_dir+"/fits_image/superdark.fits"
-        bias_file = local_dir+"/fits_image/superbias.fits"
+        dark_file = self.local_dir+"/fits_image/superdark.fits"
+        bias_file = self.local_dir+"/fits_image/superbias.fits"
         hdu_dark = fits.open(dark_file)
         dark = hdu_dark[0].data
         hdu_bias = fits.open(bias_file)
@@ -1142,12 +1148,12 @@ class SAMOS_Main(object):
         dark_sec = dark_bias / exptime
         hdr_out = hdr
         hdr_out['PARAM2']=1
-        fits.writeto(local_dir+"/fits_image/superdark_s.fits",dark_sec,hdr_out,overwrite=True)
+        fits.writeto(self.local_dir+"/fits_image/superdark_s.fits",dark_sec,hdr_out,overwrite=True)
 
     def handle_flat(self):
-        flat_file = local_dir+"/fits_image/superflat.fits"
-        dark_s_file = local_dir+"/fits_image/superdark_s.fits"
-        bias_file = local_dir+"/fits_image/superbias.fits"
+        flat_file = self.local_dir+"/fits_image/superflat.fits"
+        dark_s_file = self.local_dir+"/fits_image/superdark_s.fits"
+        bias_file = self.local_dir+"/fits_image/superbias.fits"
         hdu_flat = fits.open(flat_file)
         flat = hdu_flat[0].data
         hdu_bias = fits.open(bias_file)
@@ -1168,13 +1174,13 @@ class SAMOS_Main(object):
         else:    
             flat_dark = flat
         flat_norm = flat_dark / np.median(flat_dark)
-        fits.writeto(local_dir+"/fits_image/superflat_norm.fits",flat_norm,hdr,overwrite=True)
+        fits.writeto(self.local_dir+"/fits_image/superflat_norm.fits",flat_norm,hdr,overwrite=True)
         
     def handle_light(self):
-        light_file = local_dir+"/fits_image/newimage.fit"
-        flat_file = local_dir+"/fits_image/superflat_norm.fits"
-        dark_s_file = local_dir+"/fits_image/superdark_s.fits"
-        bias_file = local_dir+"/fits_image/superbias.fits"
+        light_file = self.local_dir+"/fits_image/newimage.fit"
+        flat_file = self.local_dir+"/fits_image/superflat_norm.fits"
+        dark_s_file = self.local_dir+"/fits_image/superdark_s.fits"
+        bias_file = self.local_dir+"/fits_image/superbias.fits"
         
         hdu_light = fits.open(light_file)
         light = hdu_light[0].data
@@ -1205,7 +1211,7 @@ class SAMOS_Main(object):
             light_dark_bias = np.divide(light_dark, flat) 
         else:    
             light_dark_bias = light_dark
-        fits_image = local_dir+"/fits_image/newimage_ff.fits"    
+        fits_image = self.local_dir+"/fits_image/newimage_ff.fits"    
         fits.writeto(fits_image,light_dark_bias,hdr,overwrite=True)
         self.Display(fits_image)
        
@@ -1987,7 +1993,7 @@ class SAMOS_Main(object):
     def LoadMap(self):
         self.textbox_filename.delete('1.0', tk.END)
         self.textbox_filename_slits.delete('1.0', tk.END)
-        filename = askopenfilename(initialdir = local_dir+"/DMD_maps_csv",
+        filename = askopenfilename(initialdir = self.local_dir+"/DMD_maps_csv",
                                         title = "Select a File",
                                         filetypes = (("Text files",
                                                       "*.csv"),
@@ -2033,7 +2039,7 @@ class SAMOS_Main(object):
     def LoadSlits(self):
         self.textbox_filename.delete('1.0', tk.END)
         self.textbox_filename_slits.delete('1.0', tk.END)
-        filename_slits = askopenfilename(initialdir = local_dir+"/DMD_maps_csv",
+        filename_slits = askopenfilename(initialdir = self.local_dir+"/DMD_maps_csv",
                                         title = "Select a File",
                                         filetypes = (("Text files",
                                                       "*.csv"),

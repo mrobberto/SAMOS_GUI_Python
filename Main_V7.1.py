@@ -8,31 +8,61 @@
 # Please see the file LICENSE.txt for details.
 #
 import sys
-sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
+#sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
 
 import os
+from os.path import exists as file_exists
+import time
+from argparse import ArgumentParser
+    
 import threading
-
+import pandas as pd
 
 from ginga.tkw.ImageViewTk import CanvasView
 from ginga.canvas.CanvasObject import get_canvas_types
 from ginga.misc import log
 from ginga.util.loader import load_data
-
+from ginga import colors
+from ginga.util.ap_region import astropy_region_to_ginga_canvas_object as r2g
+from ginga.util.ap_region import ginga_canvas_object_to_astropy_region as g2r
+from ginga.canvas import CompoundMixin as CM
+from ginga.util import ap_region
 from ginga.AstroImage import AstroImage
 img = AstroImage()
-from astropy.io import fits
+
+from PIL import Image,ImageTk,ImageOps
+
 
 import tkinter as tk
 from tkinter import ttk
 from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import asksaveasfile
+
+#import regions
+from regions import Regions
+from regions import PixCoord, RectanglePixelRegion, PointPixelRegion, RegionVisual
+
+from astropy import units as u
+from astropy.io import fits, ascii
+from astropy.stats import sigma_clipped_stats, SigmaClip
+import astropy.wcs as wcs
+
+from photutils.background import Background2D, MedianBackground
+from photutils.detection import DAOStarFinder
+
+from ginga.util import iqcalc
+iq = iqcalc.IQCalc()
+
+import matplotlib.pyplot as plt
+
+import csv
 
 ### Needed to run ConvertSIlly by C. Loomis
 import math
 import pathlib
-from astropy.io import ascii
 import numpy as np
 import glob
+import re
 
 #import sewpy   #to run sextractor wrapper
 
@@ -45,14 +75,14 @@ STD_FORMAT = '%(asctime)s | %(levelname)1.1s | %(filename)s:%(lineno)d (%(funcNa
 # Astrometry.return_from_astrometry()
 # 
 # =============================================================================
-import csv
+
 from pathlib import Path
 #define the local directory, absolute so it is not messed up when this is called
 path = Path(__file__).parent.absolute()
 local_dir = str(path.absolute())
 sys.path.append(local_dir)
 
-print("line 48 main local",local_dir)
+#print("line 48 main local",local_dir)
 os.sys.path.append(local_dir)
 os.sys.path.append(local_dir+"/Astrometry")
 os.sys.path.append(local_dir+"/SAMOS_CCD_dev")
@@ -67,34 +97,49 @@ from SAMOS_CONFIG_dev.CONFIG_GUI import Config
 
 from SAMOS_Astrometry_dev.tk_class_astrometry_V4 import Astrometry
 from SAMOS_CCD_dev.GUI_CCD_dev import GUI_CCD
+from SAMOS_Astrometry_dev.skymapper_interrogate import skymapper_interrogate
 
 from SAMOS_CCD_dev.Class_CCD_dev import Class_Camera as CCD
 from SAMOS_MOTORS_dev.Class_PCM  import Class_PCM 
 Motors  = Class_PCM()
 from SAMOS_MOTORS_dev.SAMOS_MOTORS_GUI_dev  import Window as SM_GUI
 from SAMOS_DMD_dev.Class_DMD import DigitalMicroMirrorDevice as DMD
+from SAMOS_DMD_dev.Class_DMD_dev import DigitalMicroMirrorDevice
+DMD = DigitalMicroMirrorDevice()#config_id='pass') 
+
 from SAMOS_DMD_dev.SAMOS_DMD_GUI_dev import GUI_DMD 
 from SAMOS_SOAR_dev.tk_class_SOAR_V0 import SOAR as SOAR
 from SAMOS_system_dev.SAMOS_Functions import Class_SAMOS_Functions as SF
+
+from SAMOS_DMD_dev.CONVERT.CONVERT_class import CONVERT 
+convert = CONVERT()
+
+
+from SlitTableViewer import SlitTableView as STView
+
 #from ginga.misc import widgets 
 #import PCM_module_GUI as Motors
 
 #text format for writing new info to header. Global var
 param_entry_format = '[Entry {}]\nType={}\nKeyword={}\nValue="{}"\nComment="{}\n"'
 
+#SlitTabView = STView()
 
 class SAMOS_Main(object):
 
     def __init__(self, logger):
 
         self.logger = logger
-        self.drawcolors = ['white', 'black', 'red', 'yellow', 'blue', 'green']
+        self.drawcolors = colors.get_colors()
+#        self.drawcolors = ['white', 'black', 'red', 'yellow', 'blue', 'green']
         self.canvas_types = get_canvas_types()
+        
+        # table widget to keep track of slit regions
         
         root = tk.Tk()
         root.title("SAMOS")
        
-        root.geometry("1000x800")   
+        root.geometry("1280x900")   
         
         #root.set_border_width(2)
         #root.connect("delete_event", lambda w, e: self.quit(w))
@@ -104,6 +149,10 @@ class SAMOS_Main(object):
         # will be used to write "OtherParameters.txt" 
         self.extra_header_params = 0
         self.header_entry_string = '' #keep string of entries to write to a file after acquisition.
+
+        #general definition of Master File for display
+        FITSfiledir = './fits_image/'
+        self.fullpath_FITSfilename = FITSfiledir + (os.listdir(FITSfiledir))[0] 
 
 # =============================================================================
 # #
@@ -354,7 +403,7 @@ class SAMOS_Main(object):
         entry_Comment = tk.Entry(labelframe_Acquire, width=11,  bd =3)# , xscrollcommand=scrollbar.set)
         entry_Comment.place(x=100, y=68)
 
-        button_ExpStart=  tk.Button(labelframe_Acquire, text="START", bd=3, bg='#0052cc',font=("Arial", 24),
+        button_ExpStart=  tk.Button(labelframe_Acquire, text="READ", bd=3, bg='#0052cc',font=("Arial", 24),
                                          command=self.expose_light)
         button_ExpStart.place(x=75,y=95)
 
@@ -492,7 +541,7 @@ class SAMOS_Main(object):
 #         
 # =============================================================================
         self.frame_FITSmanager = tk.Frame(root,background="pink")#, width=400, height=800)
-        self.frame_FITSmanager.place(x=0, y=500, anchor="nw", width=220, height=250)
+        self.frame_FITSmanager.place(x=0, y=500, anchor="nw", width=400, height=250)
 
         labelframe_FITSmanager =  tk.LabelFrame(self.frame_FITSmanager, text="FITS manager", font=("Arial", 24))
         labelframe_FITSmanager.pack(fill="both", expand="yes")
@@ -516,7 +565,44 @@ class SAMOS_Main(object):
                                            command=self.load_last_file)
         button_FITS_Load.place(x=0,y=25)
         
-        self.stop_it = 0
+        self.string_RA = tk.StringVar()
+#        self.string_RA.set("189.99763")  #Sombrero
+        self.string_RA.set("150.17110")  #NGC 3105
+        label_RA = tk.Label(labelframe_FITSmanager, text='RA:',  bd =3)
+        entry_RA = tk.Entry(labelframe_FITSmanager, width=11,  bd =3, textvariable = self.string_RA)
+        label_RA.place(x=190,y=5)
+        entry_RA.place(x=230,y=5)
+        
+        self.string_DEC = tk.StringVar()
+#        self.string_DEC.set("-11.62305")#Sombrero
+        self.string_DEC.set("-54.79004") #NGC 3105
+        label_DEC = tk.Label(labelframe_FITSmanager, text='Dec:',  bd =3)
+        entry_DEC = tk.Entry(labelframe_FITSmanager, width=11,  bd =3, textvariable = self.string_DEC)
+        label_DEC.place(x=290,y=30)
+        entry_DEC.place(x=230,y=30)
+        
+        self.string_Filter = tk.StringVar()
+        self.string_Filter.set("i")
+        label_Filter = tk.Label(labelframe_FITSmanager, text='Filter:',  bd =3)
+        entry_Filter = tk.Entry(labelframe_FITSmanager, width=3,  bd =3,textvariable = self.string_Filter)
+        label_Filter.place(x=190,y=55)
+        entry_Filter.place(x=230,y=55)
+
+        button_skymapper_query =  tk.Button(labelframe_FITSmanager, text="SkyMapper Query", bd=3, 
+                                           command=self.SkyMapper_query)
+        button_skymapper_query.place(x=190,y=80)
+        
+        button_skymapper_save =  tk.Button(labelframe_FITSmanager, text="SkyMapper Save", bd=3, 
+                                           command=self.SkyMapper_save)
+        button_skymapper_save.place(x=190,y=105)
+        
+        button_twirl_Astrometry =  tk.Button(labelframe_FITSmanager, text="twirl_Astrometry", bd=3, 
+#                                            command=Astrometry)
+                                            command=self.twirl_Astrometry)
+        button_twirl_Astrometry.place(x=190,y=130)
+        
+        #self.stop_it = 0
+        
         button_FITS_start =  tk.Button(labelframe_FITSmanager, text="FITS start", bd=3, 
                                            command=self.check_for_file_existence)#start_the_loop)
         button_FITS_start.place(x=0,y=50)
@@ -559,7 +645,8 @@ class SAMOS_Main(object):
         vbox.place(x=350, y=0, anchor="nw")#, width=500, height=800)
         #self.vb = vbox
 
-        canvas = tk.Canvas(vbox, bg="grey", height=514, width=522)
+#        canvas = tk.Canvas(vbox, bg="grey", height=514, width=522)
+        canvas = tk.Canvas(vbox, bg="grey", height=516, width=528)
         canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
         fi = CanvasView(logger) #=> ImageViewTk -- a backend for Ginga using a Tk canvas widget
@@ -573,8 +660,10 @@ class SAMOS_Main(object):
         fi.set_enter_focus(True)
         fi.set_callback('cursor-changed', self.cursor_cb)
         fi.set_bg(0.2, 0.2, 0.2)
-        #fi.ui_set_active(True)
+        fi.ui_set_active(True)
         fi.show_pan_mark(True)
+        # add little mode indicator that shows keyboard modal states
+        fi.show_mode_indicator(True, corner = 'ur')
         self.fitsimage = fi
 
         bd = fi.get_bindings()
@@ -582,16 +671,28 @@ class SAMOS_Main(object):
 
         # canvas that we will draw on
 #        DrawingCanvas = fi.getDrawClasses('drawingcanvas')
-        canvas2 = self.canvas_types.DrawingCanvas()
-        canvas2.enable_draw(True)
-#        #canvas.enable_edit(True)
-        canvas2.set_drawtype('rectangle', color='blue')
-        canvas2.set_surface(fi)
-        self.canvas2 = canvas2
-#        # add canvas to view
-        fi.get_canvas().add(canvas2)
-        canvas2.ui_set_active(True)
+        canvas = self.canvas_types.DrawingCanvas()
+        canvas.enable_draw(True)
+        canvas.enable_edit(True)
+        canvas.set_drawtype('point', color='red')
+        canvas.register_for_cursor_drawing(fi)
+        canvas.add_callback('draw-event', self.draw_cb)
+        canvas.set_draw_mode('draw')
 
+        # without this call, you can only draw with the right mouse button
+        # using the default user interface bindings
+        #canvas.register_for_cursor_drawing(fi)
+
+        canvas.set_surface(fi)
+        canvas.ui_set_active(True)
+        self.canvas = canvas
+
+
+#        # add canvas to viewers default canvas
+        fi.get_canvas().add(canvas)
+
+        self.drawtypes = canvas.get_drawtypes()
+        self.drawtypes.sort()
 
 #        fi.configure(516, 528) #height, width
         fi.set_window_size(514,522)
@@ -602,23 +703,28 @@ class SAMOS_Main(object):
         self.readout = tk.Label(root, text='')
         self.readout.pack(side=tk.BOTTOM, fill=tk.X, expand=0)
 
-        self.drawtypes = canvas2.get_drawtypes()
+        self.drawtypes = canvas.get_drawtypes()
         ## wdrawtype = ttk.Combobox(root, values=self.drawtypes,
-        ##                          command=self.set_drawparams)
+        ##                         command=self.set_drawparams)
         ## index = self.drawtypes.index('ruler')
         ## wdrawtype.current(index)
         wdrawtype = tk.Entry(hbox, width=12)
-        wdrawtype.insert(0, 'rectangle')
+        wdrawtype.insert(0, 'point')
         wdrawtype.bind("<Return>", self.set_drawparams)
         self.wdrawtype = wdrawtype
 
-        # wdrawcolor = ttk.Combobox(root, values=self.drawcolors,
+        self.vslit = tk.IntVar()
+        wslit = tk.Checkbutton(hbox, text="Slit", variable=self.vslit)
+        self.wslit = wslit
+
+        wdrawcolor = ttk.Combobox(hbox, values=self.drawcolors)#,
         #                           command=self.set_drawparams)
-        # index = self.drawcolors.index('blue')
-        # wdrawcolor.current(index)
-        wdrawcolor = tk.Entry(hbox, width=12)
-        wdrawcolor.insert(0, 'blue')
-        wdrawcolor.bind("<Return>", self.set_drawparams)
+        index = self.drawcolors.index('lightblue')
+        wdrawcolor.current(index)
+        wdrawcolor.bind("<<ComboboxSelected>>", self.set_drawparams)
+        #wdrawcolor = tk.Entry(hbox, width=12)
+        #wdrawcolor.insert(0, 'blue')
+        #wdrawcolor.bind("<Return>", self.set_drawparams)
         self.wdrawcolor = wdrawcolor
 
         self.vfill = tk.IntVar()
@@ -630,18 +736,194 @@ class SAMOS_Main(object):
         walpha.bind("<Return>", self.set_drawparams)
         self.walpha = walpha
 
+        wrun = tk.Button(hbox, text="Run code",
+                                command=self.run_code)
         wclear = tk.Button(hbox, text="Clear Canvas",
                                 command=self.clear_canvas)
+        wsave = tk.Button(hbox, text="Save Canvas",
+                                command=self.save_canvas)
         wopen = tk.Button(hbox, text="Open File",
                                command=self.open_file)
-        
-        # pressing quit button freezes application and forces kernel restart.
+                # pressing quit button freezes application and forces kernel restart.
         wquit = tk.Button(hbox, text="Quit",
                                command=lambda: self.quit(root))
-        for w in (wquit, wclear, walpha, tk.Label(hbox, text='Alpha:'),
-                  wfill, wdrawcolor, wdrawtype, wopen):
+
+        for w in (wquit, wsave, wclear, wrun, walpha, tk.Label(hbox, text='Alpha:'),
+                  wfill, wdrawcolor, wslit, wdrawtype, wopen):
             w.pack(side=tk.RIGHT)
 
+        mode = self.canvas.get_draw_mode() #initially set to draw by line >canvas.set_draw_mode('draw')
+        hbox1 = tk.Frame(hbox)
+        hbox1.pack(side=tk.BOTTOM, fill=tk.X, expand=0)
+
+        self.setChecked = tk.StringVar(None,"draw")
+        btn1 = tk.Radiobutton(hbox1,text="Draw",padx=20,variable=self.setChecked,value="draw", command=self.set_mode_cb).pack(anchor=tk.SW)
+        btn2 = tk.Radiobutton(hbox1,text="Edit",padx=20,variable=self.setChecked,value="edit", command=self.set_mode_cb).pack(anchor=tk.SW)
+        btn3 = tk.Radiobutton(hbox1,text="Pick",padx=20,variable=self.setChecked,value="pick", command=self.set_mode_cb).pack(anchor=tk.SW)
+ 
+
+# =============================================================================
+#         
+#  #    DMD Handler Label Frame
+#         
+# =============================================================================
+        self.frame0r = tk.Frame(root,background="cyan")#, width=400, height=800)
+        self.frame0r.place(x=900, y=10, anchor="nw", width=360, height=500)
+ 
+        labelframe_DMD =  tk.LabelFrame(self.frame0r, text="DMD", font=("Arial", 24))
+        labelframe_DMD.pack(fill="both", expand="yes")
+ 
+         #1) Set the x size of the default slit
+         #2) Set the y size of the default slit
+         #3) save slit pattern to file 
+         #4) save and push slit pattern
+         #5) load slit pattern
+         #6) shift slit pattern
+         #7) analyze point source
+         #8) remove slit
+ 
+# =============================================================================
+         #3) write slit pattern
+# =============================================================================
+        regfname_entry = tk.Entry(labelframe_DMD)
+        regfname_entry.place(x=0,y=25, width=150)
+        regfname_entry.config(fg='grey',bg='white') # default text is greyed out
+        regfname_entry.insert(tk.END,"enter pattern name")
+        regfname_entry.bind("<FocusIn>", self.regfname_handle_focus_in) 
+        #regfname_entry.bind("<FocusOut>", self.regfname_handle_focus_out)
+        self.regfname_entry = regfname_entry
+        # click in entry box deletes default text and allows entry of new text
+        button_write_slits =  tk.Button(labelframe_DMD, text="SAVE: Slits -> .reg file", bd=3, command=self.write_slits)
+        button_write_slits.place(x=155,y=25)      
+        button_read_slits =  tk.Button(labelframe_DMD, text="LOAD: .reg file -> Slits", bd=3, command=self.read_slits)
+        button_read_slits.place(x=155,y=50)
+        button_push_slits =  tk.Button(labelframe_DMD, text="Slits -> DMD", bd=3, font=("Arial", 24),  relief=tk.RAISED, command=self.push_slits)
+        button_push_slits.place(x=80,y=85)
+
+
+  
+####
+# LOAD BUTTONS
+###
+        button_load_map = tk.Button(labelframe_DMD,
+                        text = "Load DMD Map",
+                        command = self.LoadMap)
+        button_load_map.place(x=4,y=162)
+
+        label_filename = tk.Label(labelframe_DMD, text="Current DMD Map")
+        label_filename.place(x=4,y=190)
+        self.str_filename = tk.StringVar() 
+        self.textbox_filename = tk.Text(labelframe_DMD, height = 1, width = 22)      
+        self.textbox_filename.place(x=120,y=190)
+
+        button_load_slits = tk.Button(labelframe_DMD,
+                       text = "Load Slit Grid",
+                       command = self.LoadSlits)
+        button_load_slits.place(x=4,y=222)
+
+        label_filename_slits = tk.Label(labelframe_DMD, text="Current Slit Grid")
+        label_filename_slits.place(x=4,y=250)
+        self.str_filename_slits = tk.StringVar() 
+        self.textbox_filename_slits = tk.Text(labelframe_DMD, height = 1, width = 22)      
+        self.textbox_filename_slits.place(x=120,y=250)
+
+
+
+    def regfname_handle_focus_out(self,_):
+        
+        current_text = self.regfname_entry.get()
+        if current_text.strip(" ") == "":
+            #self.regfname_entry.delete(0, tk.END)
+            self.regfname_entry.config(fg='grey')
+            self.regfname_entry.config(bg='white')
+            self.regfname_entry.insert(0, "enter pattern name")
+
+
+    def regfname_handle_focus_in(self,_):
+        
+        current_text = self.regfname_entry.get()
+        if current_text == "enter pattern name":
+            
+            self.regfname_entry.delete(0, tk.END)
+            self.regfname_entry.config(fg="black")
+
+
+    def write_slits(self):
+        # when writing a new DMD pattern, put it in the designated directory
+        # don't want to clutter working dir.
+        # At SOAR, this should be cleared out every night for the next observer
+        created_patterns_path = path / Path("Astropy Regions/")
+        pattern_name = self.regfname_entry.get()
+        #check if pattern name has been proposed
+        if (pattern_name.strip(" ") == "") or (pattern_name == "enter pattern name"):
+            # if there is no pattern name provided, use a default based on 
+            # number of patterns already present
+            num_patterns_thus_far = len(os.listdir(created_patterns_path))
+            pattern_name = "pattern_reg{}.reg".format(num_patterns_thus_far)
+            
+        pattern_path = created_patterns_path / Path(pattern_name)
+        
+        #create astropy regions and save them after checking that there is something to save...
+        slits = CM.CompoundMixin.get_objects_by_kind(self.canvas,'rectangle')
+        list_slits = list(slits)
+        if len(list_slits) != 0:
+            RRR=Regions([g2r(list_slits[0])])
+            for i in range(1,len(list_slits)):
+                RRR.append(g2r(list_slits[i]))
+        RRR.write(str(pattern_path)+'.reg', overwrite=True)
+        print("\nSlits written to region file\n")
+
+    def read_slits(self):
+        reg = askopenfilename(filetypes=[("region files", "*.reg")],initialdir=local_dir+'/Astropy Regions')
+        print("trying to read region file")
+        if isinstance(reg, tuple):
+            regfileName = reg[0]
+        else:
+            regfileName = str(reg)
+        if len(regfileName) != 0:
+            self.display_region_file(regfileName)
+        pass
+    
+
+    def display_region_file(self, regfileName):
+        regfile = open(regfileName, "r")
+        
+        loaded_regions = Regions.read(regfileName, format='ds9')
+        [ap_region.add_region(self.canvas, reg) for reg in loaded_regions]
+        pass
+
+    
+    
+    def push_slits(self):
+        # push selected slits to DMD pattern
+        #Export all Ginga objects to Astropy region
+        #1. list of ginga objects
+        objects = CM.CompoundMixin.get_objects(self.canvas)
+        counter = 0
+        slit_shape = np.ones((1080,2048)) # This is the size of the DC2K
+        for obj in objects:
+            ccd_x0,ccd_y0,ccd_x1,ccd_y1 = obj.get_llur()
+            x1,y1 = convert.CCD2DMD(ccd_x0,ccd_y0)
+            x1,y1 = int(np.floor(x1)), int(np.floor(y1))
+            x2,y2 = convert.CCD2DMD(ccd_x1,ccd_y1)
+            x2,y2 = int(np.ceil(x2)), int(np.ceil(y2))
+            #dmd_corners[:][1] = corners[:][1]+500
+            ####   
+            #x1 = round(dmd_corners[0][0])
+            #y1 = round(dmd_corners[0][1])+400
+            #x2 = round(dmd_corners[2][0])
+            #y2 = round(dmd_corners[2][1])+400
+        #3 load the slit pattern   
+            slit_shape[x1:x2,y1:y2]=0
+        DMD.initialize()
+        DMD._open()
+        DMD.apply_shape(slit_shape)  
+        #DMD.apply_invert()   
+       
+        print("check")
+  
+        
+        pass
 #        IPs = Config.load_IP_user(self)
         #print(IPs)
 # =============================================================================
@@ -649,9 +931,10 @@ class SAMOS_Main(object):
 #         btn = tk.Button(master,
 #              text ="Click to open a new window",
 #              command = openNewWindow)
-#         btn.pack(pady = 10)
+#         btn.pack(pady = 10)ƒ
 #         return self.Astrometry(master)
-# =============================================================================
+# ============================================================================= 
+
     def set_filter(self):
         print(self.FW1_filter.get())
         print('moving to filter:',self.FW1_filter.get()) 
@@ -719,8 +1002,13 @@ class SAMOS_Main(object):
 
         self.canvas.set_drawtype(kind, **params)
 
+    def save_canvas(self):
+        regs = ap_region.export_regions_canvas(self.canvas, logger=self.logger)
+        #self.canvas.save_all_objects()
+
     def clear_canvas(self):
-        self.canvas.deleteAllObjects()
+#        CM.CompoundMixin.delete_all_objects(self.canvas)#,redraw=True)
+        self.canvas.delete_all_objects()
 
 #ConvertSIlly courtesy of C. Loomis
     def convertSIlly(self,fname, outname=None):
@@ -960,27 +1248,142 @@ class SAMOS_Main(object):
 
     def Display(self,imagefile): 
 #        image = load_data(fits_image_converted, logger=self.logger)
-        image = load_data(imagefile, logger=self.logger)
-            # AstroImage object of ginga.AstroImage module
-        
-        self.AstroImage = image    #make the AstroImage available
-        self.fitsimage.set_image(image)
-            # passes the image to the viewer through the set_image() method
-        #self.root.title(self.fullpath_FITSfilename)
-        
+
+        # AstroImage object of ginga.AstroImage module
+        self.AstroImage = load_data(imagefile, logger=self.logger)
+      
+        # passes the image to the viewer through the set_image() method
+        self.fitsimage.set_image(self.AstroImage)
+
+       
         
 
     def load_last_file(self):
         FITSfiledir = './fits_image/'
         self.fullpath_FITSfilename = FITSfiledir + (os.listdir(FITSfiledir))[0] 
             # './fits_image/cutout_rebined_resized.fits'
-        image = load_data(self.fullpath_FITSfilename, logger=self.logger)
-            # AstroImage object of ginga.AstroImage module
+        self.AstroImage = load_data(self.fullpath_FITSfilename, logger=self.logger)
+        # AstroImage object of ginga.AstroImage module
         
-        self.AstroImage = image    #make the AstroImage available
-        self.fitsimage.set_image(image)
-            # passes the image to the viewer through the set_image() method
+        # passes the image to the viewer through the set_image() method
+        self.fitsimage.set_image(self.AstroImage)
         self.root.title(self.fullpath_FITSfilename)
+
+
+    """ 
+    TEST
+    Inject image from SkyMapper to create a WCS solution
+    using twirl
+    """
+    def SkyMapper_query(self):
+        from ginga.AstroImage import AstroImage
+        from PIL import Image
+        img = AstroImage()
+        from astropy.io import fits
+        Posx = self.string_RA.get()
+        Posy = self.string_DEC.get()
+        filt= self.string_Filter.get()
+        filepath = skymapper_interrogate(Posx, Posy, filt)       
+        with fits.open(filepath.name) as hdu_in:
+#            img.load_hdu(hdu_in[0])
+            data = hdu_in[0].data
+            image_data = Image.fromarray(data)
+            img_res = image_data.resize(size=(1032,1056))
+            self.hdu_res = fits.PrimaryHDU(img_res)
+            # ra, dec in degrees
+            ra = Posx
+            dec = Posy
+            self.hdu_res.header['RA'] = ra
+            self.hdu_res.header['DEC'] = dec
+
+#            rebinned_filename = "./SkyMapper_g_20140408104645-29_150.171-54.790_1056x1032.fits"
+ #           hdu.writeto(rebinned_filename,overwrite=True)
+
+            img.load_hdu(self.hdu_res)       
+
+            self.fitsimage.set_image(img)
+        
+        #self.root.title(filepath)
+    
+    def SkyMapper_save(self):
+        from astropy.io import fits 
+        work_dir = os.getcwd()
+        self.fits_image_ff = "{}/fits_image/newimage_ff.fits".format(work_dir)
+        fits.writeto(self.fits_image_ff,self.hdu_res.data,header=self.hdu_res.header,overwrite=True) 
+        print("SAVED:  ",self.fits_image_ff)
+    
+    def twirl_Astrometry(self):
+        from astropy.io import fits
+        import numpy as np
+        from astropy import units as u
+        from astropy.coordinates import SkyCoord
+        from matplotlib import pyplot as plt
+        import twirl
+        
+        self.Display(self.fits_image_ff)
+        #self.load_file()   #for ging
+        
+        hdu=fits.open(self.fits_image_ff)[0]  #for this function to work
+        
+        header = hdu.header 
+        data = hdu.data
+        
+        ra, dec = header["RA"], header["DEC"]
+        center = SkyCoord(ra, dec, unit=["deg", "deg"])
+        center = [center.ra.value, center.dec.value]
+        
+        # image shape and pixel size in "
+        shape = data.shape
+        pixel = 0.18 * u.arcsec
+        fov = np.max(shape)*pixel.to(u.deg).value
+        
+        # Let's find some stars and display the image
+        
+        self.canvas.delete_all_objects(redraw=True)
+        
+        stars = twirl.find_peaks(data)[0:25]
+        
+#        plt.figure(figsize=(8,8))
+        med = np.median(data)
+#        plt.imshow(data, cmap="Greys_r", vmax=np.std(data)*5 + med, vmin=med)
+#        plt.plot(*stars.T, "o", fillstyle="none", c="w", ms=12)
+
+        from regions import PixCoord, CirclePixelRegion
+#        xs=stars[0,0]
+#        ys=stars[0,1]
+#        center_pix = PixCoord(x=xs, y=ys)
+        radius_pix = 42
+#        region = CirclePixelRegion(center_pix, radius_pix)
+        
+        regions = [CirclePixelRegion(center=PixCoord(x, y), radius=radius_pix)
+                for x, y in stars]  #[(1, 2), (3, 4)]]
+        regs = Regions(regions)
+        for reg in regs:
+            obj = r2g(reg)
+        #add_region(self.canvas, obj, tag="twirlstars", redraw=True)
+            self.canvas.add(obj)
+        
+        # we can now compute the WCS
+        gaias = twirl.gaia_radecs(center, fov, limit=25)
+        wcs = twirl._compute_wcs(stars, gaias)
+        
+        
+        # Lets check the WCS solution 
+        
+#        plt.figure(figsize=(8,8))
+        radius_pix = 25
+        gaia_pixel = np.array(SkyCoord(gaias, unit="deg").to_pixel(wcs)).T
+        regions_gaia = [CirclePixelRegion(center=PixCoord(x, y), radius=radius_pix)
+                for x, y in gaia_pixel]  #[(1, 2), (3, 4)]]
+        regs_gaia = Regions(regions_gaia)
+        for reg in regs_gaia:
+            obj = r2g(reg)
+            obj.color="red"
+        #add_region(self.canvas, obj, tag="twirlstars", redraw=True)
+            self.canvas.add(obj)
+        
+        print(wcs)
+        
 
         
 # =============================================================================
@@ -998,8 +1401,6 @@ class SAMOS_Main(object):
 # 
 # =============================================================================
     def check_for_file_existence(self):
-        from os.path import exists as file_exists
-        import time
         FITSfiledir = './fits_image/'
         while len(os.listdir(FITSfiledir)) == 0:
             print('nothing here')
@@ -1016,9 +1417,11 @@ class SAMOS_Main(object):
 # 
 # =============================================================================
 
+
+
     def load_file(self):
-        image = load_data(self.fullpath_FITSfilename, logger=self.logger)
-        self.canvas.set_image(image)
+        self.AstroImage = load_data(self.fullpath_FITSfilename, logger=self.logger)
+        self.canvas.set_image(self.AstroImage)
         self.root.title(self.fullpath_FITSfilename)
 
     def open_file(self):
@@ -1026,7 +1429,174 @@ class SAMOS_Main(object):
                                               ("fitsfiles", "*.fits")])
         self.load_file(filename)
 
+    def run_code(self):
+        """
+        # Find approximate bright peaks in a sub-area
+        from ginga.util import iqcalc
+        iq = iqcalc.IQCalc()
+    
+        r = self.canvas.objects[0]
+        img_data = self.AstroImage.get_data()
+        data_box = self.AstroImage.cutout_shape(r)
+        
+        peaks = iq.find_bright_peaks(data_box)
+        print(peaks[:20])  # subarea coordinates
+        px,py=round(peaks[0][0]+r.x1),round(peaks[0][1]+r.y2)
+        print(px,py)   #image coordinates
+        print(img_data[px,py]) #actual counts
+     
+        # evaluate peaks to get FWHM, center of each peak, etc.
+        objs = iq.evaluate_peaks(peaks, data_box)       
+        # how many did we find with standard thresholding, etc.
+        # see params for find_bright_peaks() and evaluate_peaks() for details
+        print(len(objs))
+        # example of what is returned
+        o1 = objs[0]
+        print(o1)
+           
+        # pixel coords are for cutout, so add back in origin of cutout
+        #  to get full data coords RA, DEC of first object
+        x1, y1, x2, y2 = r.get_llur()
+        self.img.pixtoradec(x1+o1.objx, y1+o1.objy)
+          
+        # Draw circles around all objects
+        Circle = self.canvas.get_draw_class('circle')
+        for obj in objs:
+            x, y = x1+obj.objx, y1+obj.objy
+            if r.contains(x, y):
+                self.canvas.add(Circle(x, y, radius=10, color='yellow'))
+        
+        # set pan and zoom to center
+        self.fitsimage.set_pan((x1+x2)/2, (y1+y2)/2)
+        self.fitsimage.scale_to(0.75, 0.75)
+        
+        r_all = self.canvas.objects[:]
+        print(r_all)
+        
+        
+        EXERCISE COMPOUNDMIXING CLASS
+        r_all is a CompountMixing object, see class ginga.canvas.CompoundMixin.CompoundMixin
+         https://ginga.readthedocs.io/en/stable/_modules/ginga/canvas/CompoundMixin.html#CompoundMixin.get_objects_by_kinds        
+              
+        #check that we have created a compostition of objects:
+        from ginga.canvas import CompoundMixin as CM
+        CM.CompoundMixin.is_compound(self.canvas.objects)     # True
+
+        #we can find out what are the "points" objects
+        points = CM.CompoundMixin.get_objects_by_kind(self.canvas,'point')
+        print(list(points))
+        
+        #we can remove what we don't like, e.g. points
+        points = CM.CompoundMixin.get_objects_by_kind(self.canvas,'point')
+        list_point=list(points)
+        CM.CompoundMixin.delete_objects(self.canvas,list_point)
+        self.canvas.objects   #check that the points are gone
+           
+        #we can remove both points and boxes
+        points = CM.CompoundMixin.get_objects_by_kinds(self.canvas,['point','box'])
+        list_points=list(points)
+        CM.CompoundMixin.delete_objects(self.canvas,list_points)
+        self.canvas.objects   #check that the points are gone
+       
+        #drawing an object can be done rather easily
+        #first take an object fromt the list and change something
+        objects=CM.CompoundMixin.get_objects(self.canvas)
+        o0=objects[0]
+        o0.y1=40
+        o0.height=100
+        o0.width=70
+        o0.color='lightblue'
+        CM.CompoundMixin.draw(self.canvas,self.canvas.viewer)
+        
+        END OF THE COMPOUNDMIXING EXCERCISE
+                
+        # region = 'fk5;circle(290.96388,14.019167,843.31194")'
+        # astropy_region = pyregion.parse(region)
+        #astropy_region=ap_region.ginga_canvas_object_to_astropy_region(self.canvas.objects[0])
+        #print(astropy_region)
+         
+        #List all regions that we have created
+        #n_objects = len(self.canvas.objects)
+        #for i_obj in range(n_objects):
+        #   astropy_region=ap_region.ginga_canvas_object_to_astropy_region(self.canvas.objects[i_obj])
+        #   print(astropy_region) 
+           
+        #create a list of astropy regions, so we export a .reg file
+        #first put the initial region in square brackets, argument of Regions to initiate the list
+        RRR=Regions([ap_region.ginga_canvas_object_to_astropy_region(self.canvas.objects[0])])
+        #then append to the list adding all other regions
+        for i_obj in range(1,len(self.canvas.objects)):
+           RRR.append(ap_region.ginga_canvas_object_to_astropy_region(self.canvas.objects[i_obj]))
+           print(RRR) 
+ 
+        #write the regions to file
+        #this does not seem to work...
+        RRR.write('/Users/SAMOS_dev/Desktop/new_regions.reg', format='ds9',overwrite=True)
+       
+        #reading back the ds9 regions in ginga
+        pyregions = Regions.read('/Users/SAMOS_dev/Desktop/new_regions.reg', format='ds9')
+        n_regions = len(pyregions)
+        for i in range(n_regions):
+            pyregion = pyregions[i]
+            pyregion.width=7
+            pyregion.width=3
+            ap_region.add_region(self.canvas,pyregion)
+
+        print("yay!")            
+        """
+        #Export all Ginga objects to Astropy region
+        #1. list of ginga objects
+        objects = CM.CompoundMixin.get_objects(self.canvas)
+        counter = 0
+        for obj in objects:
+            if counter == 0:
+                astropy_regions=[g2r(obj)]  #here we create the first astropy region and the Regions list []
+            else:
+                astropy_regions.append(g2r(obj)) #will with the other slits 
+            counter += 1
+        regs = Regions(astropy_regions)     #convert to astropy-Regions
+        regs.write('my_regions.reg',overwrite=True)   #write to file
+        
+        #2, Extract the slits and convert pixel->DMD values
+        
+        DMD.initialize()
+        DMD._open()
+        
+        #create initial DMD slit mask
+        slit_shape = np.ones((1080,2048)) # This is the size of the DC2K
+        
+        regions = Regions.read('my_regions.reg')
+
+
+        for i in range(len(regions)):
+            reg = regions[i]
+            corners = reg.corners
+            #convert CCD corners to DMD corners here
+            #TBD
+            #dmd_corners=[] 
+            #for j in range(len(corners)):
+            x1,y1 = convert.CCD2DMD(corners[0][0], corners[0][1])
+            x1,y1 = int(np.floor(x1)), int(np.floor(y1))
+            x2,y2 = convert.CCD2DMD(corners[2][0], corners[2][1])
+            x2,y2 = int(np.ceil(x2)), int(np.ceil(y2))
+            #dmd_corners[:][1] = corners[:][1]+500
+            ####   
+            #x1 = round(dmd_corners[0][0])
+            #y1 = round(dmd_corners[0][1])+400
+            #x2 = round(dmd_corners[2][0])
+            #y2 = round(dmd_corners[2][1])+400
+        #3 load the slit pattern   
+            slit_shape[x1:x2,y1:y2]=0
+        DMD.apply_shape(slit_shape)  
+        #DMD.apply_invert()   
+
+        
+        print("check")
+        
+
     def cursor_cb(self, viewer, button, data_x, data_y):
+        
+       
         """This gets called when the data position relative to the cursor
         changes.
         """
@@ -1041,7 +1611,9 @@ class SAMOS_Main(object):
             value = None
 
         fits_x, fits_y = data_x + 1, data_y + 1
-
+        
+        dmd_x, dmd_y = convert.CCD2DMD(fits_x, fits_y)
+        
         # Calculate WCS RA
         try:
             # NOTE: image function operates on DATA space coords
@@ -1059,9 +1631,13 @@ class SAMOS_Main(object):
             #    str(e)))
             ra_txt = 'BAD WCS'
             dec_txt = 'BAD WCS'
-
-        text = "RA: %s  DEC: %s  X: %.2f  Y: %.2f  Value: %s" % (
-            ra_txt, dec_txt, fits_x, fits_y, value)
+        coords_text = "RA: %s  DEC: %s \n"%(ra_txt, dec_txt)
+#        dmd_text = "DMD_X: %.2f  DMD_Y: %.2f \n"%(dmd_x, dmd_y)
+        dmd_text = "DMD_X: %i  DMD_Y: %i \n"%(np.round(dmd_x), round(dmd_y))
+        text = "X: %.2f  Y: %.2f  Value: %s" % (
+            fits_x, fits_y, value)
+        
+        text = coords_text + dmd_text + text
         self.readout.config(text=text)
 
     def quit(self, root):
@@ -1069,10 +1645,162 @@ class SAMOS_Main(object):
         return True
 
 ######
+    def set_mode_cb(self):
+        mode = self.setChecked.get()
+#        self.logger.info("canvas mode changed (%s) %s" % (mode))
+        self.logger.info("canvas mode changed (%s)" % (mode))
+        self.canvas.set_draw_mode(mode)
+
+    def draw_cb(self, canvas, tag):
+        obj = canvas.get_object_by_tag(tag)
+        obj.add_callback('pick-down', self.pick_cb, 'down')
+        obj.add_callback('pick-up', self.pick_cb, 'up')
+        #obj.add_callback('pick-move', self.pick_cb, 'move')
+        #obj.add_callback('pick-hover', self.pick_cb, 'hover')
+        #obj.add_callback('pick-enter', self.pick_cb, 'enter')
+        #obj.add_callback('pick-leave', self.pick_cb, 'leave')
+        obj.add_callback('pick-key', self.pick_cb, 'key')
+        obj.pickable = True
+        obj.add_callback('edited', self.edit_cb)
+        #obj.add_callback('pick-key',self.delete_obj_cb, 'key')
+        kind = self.wdrawtype.get()
+        print("kind: ", kind)
+        if self.vslit.get() != 0 and kind == 'point':
+            true_kind='Slit'
+            print("It is a slit")
+            print("Handle the rectangle as a slit")
+            self.slit_handler(obj)
+        
+        #self.SlitTabView.add_slit_obj(obj, self.fitsimage)
+        #print(self.SlitTabView.slitDF)
+        #else:
+        #    return
+
+        
+        
+    def slit_handler(self, point):
+        print('ready to associate a slit to ')
+        print(point)
+        img_data = self.AstroImage.get_data()
+        #create box
+        x_c = point.points[0][0]-1#really needed?
+        y_c = point.points[0][1]-1
+        #create area to search, using astropy instead of ginga (still unclear how you do it with ginga)
+        r = RectanglePixelRegion(center=PixCoord(x=round(x_c), y=round(y_c)),
+                                        width=20, height=20,
+                                        angle = 0*u.deg)
+        # and we convert it to ginga...
+        obj = r2g(r)
+        #this retuns a Box object 
+        self.canvas.add(obj)
+        print("check")
+        data_box = self.AstroImage.cutout_shape(obj)
+        
+  #      obj = self.canvas.get_draw_class('rectangle')
+  #      obj(x1=x_c-20,y1=y_c-20,x2=x_c+20,y2=y_c+20,
+  #                      width=100,
+  #                      height=30,
+  #                      angle = 0*u.deg)
+  #      data_box = self.img.cutout_shape(obj)
+        peaks = iq.find_bright_peaks(data_box)
+        print(peaks[:20])  # subarea coordinates
+        x1=obj.x-obj.xradius
+        y1=obj.y-obj.yradius
+        px,py=round(peaks[0][0]+x1),round(peaks[0][1]+y1)
+        print('peak found at: ', px,py)   #image coordinates
+        print('with counts: ',img_data[px,py]) #actual counts
+        # evaluate peaks to get FWHM, center of each peak, etc.
+        objs = iq.evaluate_peaks(peaks, data_box)       
+        #from ginga.readthedocs.io
+        """
+        Each result contains the following keys:
+
+           * ``objx``, ``objy``: Fitted centroid from :meth:`get_fwhm`.
+           * ``pos``: A measure of distance from the center of the image.
+           * ``oid_x``, ``oid_y``: Center-of-mass centroid from :meth:`centroid`.
+           * ``fwhm_x``, ``fwhm_y``: Fitted FWHM from :meth:`get_fwhm`.
+           * ``fwhm``: Overall measure of fwhm as a single value.
+           * ``fwhm_radius``: Input FWHM radius.
+           * ``brightness``: Average peak value based on :meth:`get_fwhm` fits.
+           * ``elipse``: A measure of ellipticity.
+           * ``x``, ``y``: Input indices of the peak.
+           * ``skylevel``: Sky level estimated from median of data array and
+             ``skylevel_magnification`` and ``skylevel_offset`` attributes.
+           * ``background``: Median of the input array.
+           * ``ensquared_energy_fn``: Function of ensquared energy for different pixel radii.
+           * ``encircled_energy_fn``: Function of encircled energy for different pixel radii.
+
+        """
+        print('full evaluation: ',objs)
+        print('fitted centroid: ', objs[0].objx,objs[0].objy) 
+        print('FWHM: ', objs[0].fwhm) 
+        print('peak value: ',objs[0].brightness)
+        print('sky level: ',objs[0].skylevel)
+        print('median of area: ',objs[0].background)
+        print("the four vertex of the rectangle are, in pixel coord:")
+        x1, y1, x2, y2 = obj.get_llur()
+        print("the RADEC of the fitted centroid are, in decimal degrees:")
+        print(self.AstroImage.pixtoradec(objs[0].objx,objs[0].objy))
+        slit_box = self.canvas.get_draw_class('rectangle')
+        slit_h=3
+        slit_w=7
+        self.canvas.add(slit_box(x1=objs[0].objx+x1-slit_w,y1=objs[0].objy+y1-slit_h,x2=objs[0].objx+x1+slit_w,y2=objs[0].objy+y1+slit_h,
+                        width=100,
+                        height=30,
+                        angle = 0*u.deg))
+        print("slit added")
+        #self.cleanup_kind('point')
+        #self.cleanup_kind('box')
+
+
+    def pick_cb(self, obj, canvas, event, pt, ptype):
+        
+        print("pick event '%s' with obj %s at (%.2f, %.2f)" % (
+            ptype, obj.kind, pt[0], pt[1]))
+        self.logger.info("pick event '%s' with obj %s at (%.2f, %.2f)" % (
+            ptype, obj.kind, pt[0], pt[1]))
+        
+        try:
+            if event.key=='d':
+                canvas.delete_object(obj)
+        except:
+            pass
+        return True
+    
+    def edit_cb(self, obj):
+        self.logger.info("object %s has been edited" % (obj.kind))
+
+        return True
+
+    def cleanup_kind(self,kind):
+        #check that we have created a compostition of objects:
+        CM.CompoundMixin.is_compound(self.canvas.objects)     # True
+
+        #we can find out what are the "points" objects
+        #points = CM.CompoundMixin.get_objects_by_kind(self.canvas,'point')
+        found = CM.CompoundMixin.get_objects_by_kind(self.canvas,str(kind))
+        list_found=list(found)
+        CM.CompoundMixin.delete_objects(self.canvas,list_found)
+        self.canvas.objects   #check that the points are gone
+
+    def push_objects_to_slits(self):
+        #1) print all the objects as a astropy region file
+        #2) edit the file into a dmd file
+        #3) load the dmd file
+        print("check")
+
+
+
+
+
+######
     def donothing(self):
         pass
 
-     
+######
+    def show_slit_table(self):
+        self.SlitTabView = STView()
+        
 ######
     def load_Astrometry(self):
         #=> send center and list coodinates to Astrometry, and start Astrometry!
@@ -1109,10 +1837,7 @@ class SAMOS_Main(object):
 ######
 # from https://sewpy.readthedocs.io/en/latest/
     def run_DaoFind(self):
-        from astropy.stats import sigma_clipped_stats
-        from astropy.io import fits
         self.fullpath_FITSfilename
-        import astropy.wcs as wcs
         ### here is the daophot part of the procedure
         hdu = fits.open(self.fullpath_FITSfilename, logger=self.logger)
 
@@ -1131,17 +1856,14 @@ class SAMOS_Main(object):
         
         #2d background estimate
         # FROM https://photutils.readthedocs.io/en/stable/background.html
-        from astropy.stats import SigmaClip
-        from photutils.background import Background2D, MedianBackground
         sigma_clip = SigmaClip(sigma=3.)
         bkg_estimator = MedianBackground()
         bkg = Background2D(data, (50, 50), filter_size=(3, 3), sigma_clip=sigma_clip, bkg_estimator=bkg_estimator)
         median = bkg.background    
-        import matplotlib.pyplot as plt
+
         plt.imshow(bkg.background, origin='lower', cmap='Greys_r', interpolation='nearest')
         
         
-        from photutils.detection import DAOStarFinder
         daofind = DAOStarFinder(fwhm=3.0, threshold=3.*std)  
         sources = daofind(data - median)  
         for col in sources.colnames:  
@@ -1158,9 +1880,9 @@ class SAMOS_Main(object):
 
 #        image = load_data(self.fullpath_FITSfilename, logger=self.logger)
         viewer=self.fitsimage#.set_image(image)   #ImageViewCanvas object of ginga.tkw.ImageViewTk module
-        canvas2 = viewer.get_private_canvas() #ImageViewCanvas object of ginga.tkw.ImageViewTk module
-        canvas2.delete_all_objects(redraw=True)
-        canvas2.show_pan_mark(True)
+        canvas = viewer.get_private_canvas() #ImageViewCanvas object of ginga.tkw.ImageViewTk module
+        canvas.delete_all_objects(redraw=True)
+        canvas.show_pan_mark(True)
         x = sources['xcentroid']
         y = sources['ycentroid']
         
@@ -1173,26 +1895,26 @@ class SAMOS_Main(object):
         tag = '_$pan_mark'
         radius = 10
         color='green'
-#        canvas2 = viewer.get_private_canvas()
+#        canvas = viewer.get_private_canvas()
 #        viewer.initialize_private_canvas(canvas)
-#        mark = canvas2.get_object_by_tag(tag)
+#        mark = canvas.get_object_by_tag(tag)
 #        mark.color = color  
-        Point = canvas2.get_draw_class('point')
- #       canvas2.set.drawtype('cross',color='green')
+        Point = canvas.get_draw_class('point')
+ #       canvas.set.drawtype('cross',color='green')
 #        self.canvas.redraw(whence=3)
         i=0
         for i in range(len(x)):
  #           x[0]=886
 #            y[0]=938
-#            canvas2.add(Point(x[i]/2.-258, y[i]/2-264, radius, style='plus', color=color,                             
-#            canvas2.add(Point( (x[i]/2.-264)*1.01, (y[i]/2-258)*1.01, radius, style='plus', color=color,                             
-#            canvas2.add(Point( (x[i]/2.-264.5), (y[i]/2-258.5), radius, style='plus', color=color,                             
-            canvas2.add(Point( (x[i]-526)/2., (y[i]-514)/2., radius, style='plus', color=color,                             
+#            canvas.add(Point(x[i]/2.-258, y[i]/2-264, radius, style='plus', color=color,                             
+#            canvas.add(Point( (x[i]/2.-264)*1.01, (y[i]/2-258)*1.01, radius, style='plus', color=color,                             
+#            canvas.add(Point( (x[i]/2.-264.5), (y[i]/2-258.5), radius, style='plus', color=color,                             
+            canvas.add(Point( (x[i]-526)/2., (y[i]-514)/2., radius, style='plus', color=color,                             
                              coord='cartesian'),
                        redraw=True)#False)
             print(x[i], y[i],x[i]/2.-264, y[i]/2.-258)
 #            print(x[i], y[i],x[i]/2.-258, y[i]/2.2-258)
-        canvas2.update_canvas(whence=3)
+        canvas.update_canvas(whence=3)
         print('done')
 
     def show_slits(self):
@@ -1202,9 +1924,9 @@ class SAMOS_Main(object):
 
 #        image = load_data(self.fullpath_FITSfilename, logger=self.logger)
         viewer=self.fitsimage#.set_image(image)   #ImageViewCanvas object of ginga.tkw.ImageViewTk module
-        canvas2 = viewer.get_private_canvas() #ImageViewCanvas object of ginga.tkw.ImageViewTk module
-        canvas2.delete_all_objects(redraw=True)
-        canvas2.show_pan_mark(True)
+        canvas = viewer.get_private_canvas() #ImageViewCanvas object of ginga.tkw.ImageViewTk module
+        canvas.delete_all_objects(redraw=True)
+        canvas.show_pan_mark(True)
         x = [10,110,210,310,410,510,610,710]#sources['xcentroid']
         y = [10,110,210,310,410,510,610,710]#)sources['ycentroid']
         Dx = [7,7,  7,  7,  7,  7,  7,  7]
@@ -1212,34 +1934,144 @@ class SAMOS_Main(object):
         tag = '_$pan_mark'
         radius = 1
         color='green'
-#        canvas2 = viewer.get_private_canvas()
+#        canvas = viewer.get_private_canvas()
 #        viewer.initialize_private_canvas(canvas)
-#        mark = canvas2.get_object_by_tag(tag)
+#        mark = canvas.get_object_by_tag(tag)
 #        mark.color = color  
-        Point = canvas2.get_draw_class('point')
- #       canvas2.set.drawtype('cross',color='green')
+        Point = canvas.get_draw_class('point')
+ #       canvas.set.drawtype('cross',color='green')
 #        self.canvas.redraw(whence=3)
         i=0
         for i in range(len(x)):
             x[0]=886
             y[0]=938
-#            canvas2.add(Point(x[i]/2.-258, y[i]/2-264, radius, style='plus', color=color,                             
-#            canvas2.add(Point( (x[i]/2.-264)*1.01, (y[i]/2-258)*1.01, radius, style='plus', color=color,                             
-#            canvas2.add(Point( (x[i]/2.-264.5), (y[i]/2-258.5), radius, style='plus', color=color,                             
+#            canvas.add(Point(x[i]/2.-258, y[i]/2-264, radius, style='plus', color=color,                             
+#            canvas.add(Point( (x[i]/2.-264)*1.01, (y[i]/2-258)*1.01, radius, style='plus', color=color,                             
+#            canvas.add(Point( (x[i]/2.-264.5), (y[i]/2-258.5), radius, style='plus', color=color,                             
             for ix in range(Dx[i]):
                 for iy in range(Dy[i]):
                     xp = ((x[i] + (ix-int(Dx[i]/2)))-526)/2.
                     yp = ((y[i] + (iy-int(Dy[i]/2)))-514)/2.
-#                    canvas2.add(Point( (x[i]-526)/2., (y[i]-514)/2., radius, style='square', color='black',                             
-                    canvas2.add(Point( xp, yp, radius, style='square', color='black',                             
+#                    canvas.add(Point( (x[i]-526)/2., (y[i]-514)/2., radius, style='square', color='black',                             
+                    canvas.add(Point( xp, yp, radius, style='square', color='black',                             
                              coord='cartesian'),
                        redraw=True)#False)
             print(x[i], y[i],x[i]/2.-264, y[i]/2.-258)
 #            print(x[i], y[i],x[i]/2.-258, y[i]/2.2-258)
-        canvas2.update_canvas(whence=3)
+        canvas.update_canvas(whence=3)
         print('done')
     
 
+
+
+
+
+
+# =============================================================================
+#
+# Load DMD map file
+#
+# =============================================================================
+
+    def LoadMap(self):
+        self.textbox_filename.delete('1.0', tk.END)
+        self.textbox_filename_slits.delete('1.0', tk.END)
+        filename = askopenfilename(initialdir = local_dir+"/DMD_maps_csv",
+                                        title = "Select a File",
+                                        filetypes = (("Text files",
+                                                      "*.csv"),
+                                                     ("all files",
+                                                      "*.*")))
+        head, tail = os.path.split(filename)
+        self.textbox_filename.insert(tk.END, tail)
+        
+
+        myList = []
+
+        with open (filename,'r') as file:
+            myFile = csv.reader(file)
+            for row in myFile:
+                myList.append(row)
+        #print(myList)         
+        
+        for i in range(len(myList)):
+            print("Row " + str(i) + ": " + str(myList[i]))
+        
+        test_shape = np.ones((1080,2048)) # This is the size of the DC2K    
+        for i in range(len(myList)):
+            test_shape[int(myList[i][0]):int(myList[i][1]),int(myList[i][2]):int(myList[i][3])] = int(myList[i][4])
+        
+        DMD.apply_shape(test_shape)    
+
+        # Create a photoimage object of the image in the path
+        #Load an image in the script
+        # global img
+        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        self.img= ImageTk.PhotoImage(image_map)
+
+        print('img =', self.img)
+        self.canvas.create_image(104,128,image=self.img)
+
+        
+# =============================================================================
+#
+# Load Slit file
+#
+# =============================================================================
+        
+    def LoadSlits(self):
+        self.textbox_filename.delete('1.0', tk.END)
+        self.textbox_filename_slits.delete('1.0', tk.END)
+        filename_slits = askopenfilename(initialdir = local_dir+"/DMD_maps_csv",
+                                        title = "Select a File",
+                                        filetypes = (("Text files",
+                                                      "*.csv"),
+                                                     ("all files",
+                                                      "*.*")))
+        head, tail = os.path.split(filename_slits)
+        self.textbox_filename_slits.insert(tk.END, tail)
+
+        table = pd.read_csv(filename_slits)
+        xoffset = 0
+        yoffset = np.full(len(table.index),int(2048/4))
+        y1 = (round(table['x'])-np.floor(table['dx1'])).astype(int) + yoffset
+        y2 = (round(table['x'])+np.ceil(table['dx2'])).astype(int) + yoffset
+        x1 = (round(table['y'])-np.floor(table['dy1'])).astype(int) + xoffset
+        x2 = (round(table['y'])+np.ceil(table['dy2'])).astype(int) + xoffset
+        slit_shape = np.ones((1080,2048)) # This is the size of the DC2K
+        for i in table.index:
+           slit_shape[x1[i]:x2[i],y1[i]:y2[i]]=0
+        DMD.initialize()
+        DMD._open()
+        DMD.apply_shape(slit_shape)
+        
+        # Create a photoimage object of the image in the path
+        #Load the image
+        # global img
+        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        self.img= ImageTk.PhotoImage(image_map)
+
+        #Add image to the Canvas Items
+        print('img =', self.img)
+        self.canvas.create_image(104,128,image=self.img)
+
+
+    """
+    Generic File Writer
+    02/21/23 mr - to be tested!
+    """
+    def save(file_type):
+        if file_type == None:
+            files = [('All Files', '*.*')] 
+        elif file_type == 'py':
+            files = [('Python Files', '*.py')]
+        elif file_type == 'txt':
+            files == ('Text Document', '*.txt')
+        elif file_type == 'csv':   
+            files == ('DMD grid', '*.csv')
+        file = asksaveasfile(filetypes = files, defaultextension = files)
+      
+        #btn = ttk.Button(root, text = 'Save', command = lambda : save())        
 
 ######
 def main(options, args):
@@ -1258,7 +2090,7 @@ def main(options, args):
 if __name__ == "__main__":
 
     # Parse command line options
-    from argparse import ArgumentParser
+
 
     argprs = ArgumentParser()
 

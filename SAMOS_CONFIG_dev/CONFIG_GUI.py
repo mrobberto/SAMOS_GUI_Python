@@ -536,7 +536,9 @@ class Config(tk.Frame):
         if answer != "no connection":
             print("Motors are on")
             self.IP_Motors_on_button.config(image = self.Image_on)
-            self.IP_status_dict['IP_Motors'] = True   
+            print('echo from server:')
+            PCM.power_on()
+
         else:
             print("Motors are off\n")
             self.IP_Motors_on_button.config(image = self.Image_off)

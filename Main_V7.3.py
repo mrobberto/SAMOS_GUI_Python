@@ -1,12 +1,9 @@
+"""
+Created on Wed Feb 22 13:40:01 2023
 
+@author: samos_dev
+"""
 
-#! /usr/bin/env python
-#
-# example2_tk.py -- Simple, configurable FITS viewer.
-#
-# This is open-source software licensed under a BSD license.
-# Please see the file LICENSE.txt for details.
-#
 import sys
 #sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
 

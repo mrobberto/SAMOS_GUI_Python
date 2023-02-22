@@ -1,12 +1,9 @@
+"""
+Created on Wed Feb 22 13:40:01 2023
 
+@author: samos_dev
+"""
 
-#! /usr/bin/env python
-#
-# example2_tk.py -- Simple, configurable FITS viewer.
-#
-# This is open-source software licensed under a BSD license.
-# Please see the file LICENSE.txt for details.
-#
 import sys
 #sys.path.append('/opt/anaconda3/envs/samos_env/lib/python3.10/site-packages')
 
@@ -135,6 +132,7 @@ class SAMOS_Main(object):
 #        self.drawcolors = ['white', 'black', 'red', 'yellow', 'blue', 'green']
         self.canvas_types = get_canvas_types()
         
+        self.SlitTabView = None
         # table widget to keep track of slit regions
         
         root = tk.Tk()
@@ -1686,12 +1684,11 @@ class SAMOS_Main(object):
             true_kind='Slit'
             print("It is a slit")
             print("Handle the rectangle as a slit")
+            if self.SlitTabView is None:
+                self.SlitTabView = STView()
+            
             self.slit_handler(obj)
         
-        #self.SlitTabView.add_slit_obj(obj, self.fitsimage)
-        #print(self.SlitTabView.slitDF)
-        #else:
-        #    return
 
         
         
@@ -1765,6 +1762,7 @@ class SAMOS_Main(object):
                         width=100,
                         height=30,
                         angle = 0*u.deg))
+        self.SlitTabView.add_slit_obj(r, self.fitsimage)
         print("slit added")
         #self.cleanup_kind('point')
         #self.cleanup_kind('box')

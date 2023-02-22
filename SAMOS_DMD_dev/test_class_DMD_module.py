@@ -34,6 +34,7 @@ dmd.initialize()
 
 # There are two builtin states for the device, all white (ones) all black (zeros)
 dmd._open()
+dmd._close()
 #dmd.apply_checkerboard()
 #dmd.apply_blackout()
 #dmd.apply_whiteout()

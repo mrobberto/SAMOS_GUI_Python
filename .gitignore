@@ -18,4 +18,4 @@ SAMOS_DMD_dev/CONVERT/__pycache__/CONVERT_class.cpython-39.pyc
 SAMOS_DMD_dev/Create_DMD_Pattern_dev/__pycache__/setup_slits.cpython-39.pyc
 SAMOS_MOTORS_dev/__pycache__/Class_PCM.cpython-39.pyc
 SAMOS_DMD_dev/Create_DMD_Pattern_dev/__pycache__/setup_slits.cpython-39.pyc
-__pycache__/SlitTableViewer.cpython-310.pyc
+*.pyc

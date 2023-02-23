@@ -919,16 +919,19 @@ class SAMOS_Main(object):
             #y2 = round(dmd_corners[2][1])+400
         #3 load the slit pattern   
             slit_shape[x1:x2,y1:y2]=0
-        DMD.initialize()
+        DMD.initialize(address=self.get_IP['IP_DMD'][0:-5], port=int(self.get_IP['IP_DMD'][-4:]))
         DMD._open()
         DMD.apply_shape(slit_shape)  
         #DMD.apply_invert()   
        
         print("check")
-  
-        
-        pass
-#        IPs = Config.load_IP_user(self)
+ 
+    def get_IP(self,device='DMD'): 
+        v=pd.read_csv("SAMOS_system_dev/IP_addresses_default.csv",header=None)
+        if device == 'DMD':
+            return(v[2][1])    
+
+        IPs = Config.load_IP_user(self)
         #print(IPs)
 # =============================================================================
 #     def open_Astrometry(self):
@@ -1016,29 +1019,29 @@ class SAMOS_Main(object):
 
 #ConvertSIlly courtesy of C. Loomis
     def convertSIlly(self,fname, outname=None):
-    	FITSblock = 2880
+        FITSblock = 2880
 
     # If no output file given, just prepend "fixed"
-    	if outname is None:
+        if outname is None:
             fname = pathlib.Path(fname)
             dd = fname.parent
             outname = pathlib.Path(fname.parent, 'fixed'+fname.name)
     
-    	with open(fname, "rb") as in_f:
+        with open(fname, "rb") as in_f:
             buf = in_f.read()
 
     # Two fixes:
     # Header cards:
-    	buf = buf.replace(b'SIMPLE  =                    F', b'SIMPLE  =                    T')
-    	buf = buf.replace(b'BITPIX  =                  -16', b'BITPIX  =                   16')
-    	buf = buf.replace(b"INSTRUME= Spectral Instruments, Inc. 850-406 camera  ", b"INSTRUME= 'Spectral Instruments, Inc. 850-406 camera'")
+        buf = buf.replace(b'SIMPLE  =                    F', b'SIMPLE  =                    T')
+        buf = buf.replace(b'BITPIX  =                  -16', b'BITPIX  =                   16')
+        buf = buf.replace(b"INSTRUME= Spectral Instruments, Inc. 850-406 camera  ", b"INSTRUME= 'Spectral Instruments, Inc. 850-406 camera'")
     
     # Pad to full FITS block:
-    	blocks = len(buf) / FITSblock
-    	pad = round((math.ceil(blocks) - blocks) * FITSblock)
-    	buf = buf + (b'\0' * pad)
+        blocks = len(buf) / FITSblock
+        pad = round((math.ceil(blocks) - blocks) * FITSblock)
+        buf = buf + (b'\0' * pad)
     
-    	with open(outname, "wb+") as out_f:
+        with open(outname, "wb+") as out_f:
             out_f.write(buf)
 
 # =============================================================================
@@ -1241,8 +1244,8 @@ class SAMOS_Main(object):
         #fits_image = "{}/fits_image/newimage_fixed.fit".format(work_dir)
         self.fits_image = "{}/fits_image/newimage.fit".format(work_dir)
         
-        ##fits_image_converted = "/Users/robberto/Box/@Massimo/_Python/SAMOS_GUI_dev/fits_image/newimage_fixed.fit"             		
-#        fits_image_converted = "{}/fits_image/newimage_fixed.fit".format(work_dir)         		
+        ##fits_image_converted = "/Users/robberto/Box/@Massimo/_Python/SAMOS_GUI_dev/fits_image/newimage_fixed.fit"                     
+#        fits_image_converted = "{}/fits_image/newimage_fixed.fit".format(work_dir)                 
         
 #        self.convertSIlly(fits_image,fits_image_converted)
         #To do: cancel the original image.= If the canera is active; otherwise leave it.
@@ -1575,7 +1578,7 @@ class SAMOS_Main(object):
         
         #2, Extract the slits and convert pixel->DMD values
         
-        DMD.initialize()
+        DMD.initialize(address=self.get_IP['IP_DMD'][0:-5], port=int(self.get_IP['IP_DMD'][-4:]))
         DMD._open()
         
         #create initial DMD slit mask
@@ -2057,7 +2060,7 @@ class SAMOS_Main(object):
         slit_shape = np.ones((1080,2048)) # This is the size of the DC2K
         for i in table.index:
            slit_shape[x1[i]:x2[i],y1[i]:y2[i]]=0
-        DMD.initialize()
+        DMD.initialize(address=self.get_IP['IP_DMD'][0:-5], port=int(self.get_IP['IP_DMD'][-4:]))
         DMD._open()
         DMD.apply_shape(slit_shape)
         

@@ -1492,7 +1492,7 @@ class SAMOS_Main(object):
         EXERCISE COMPOUNDMIXING CLASS
         r_all is a CompountMixing object, see class ginga.canvas.CompoundMixin.CompoundMixin
          https://ginga.readthedocs.io/en/stable/_modules/ginga/canvas/CompoundMixin.html#CompoundMixin.get_objects_by_kinds        
-              
+        """      
         #check that we have created a compostition of objects:
         from ginga.canvas import CompoundMixin as CM
         CM.CompoundMixin.is_compound(self.canvas.objects)     # True
@@ -1512,7 +1512,7 @@ class SAMOS_Main(object):
         list_points=list(points)
         CM.CompoundMixin.delete_objects(self.canvas,list_points)
         self.canvas.objects   #check that the points are gone
-       
+        """
         #drawing an object can be done rather easily
         #first take an object fromt the list and change something
         objects=CM.CompoundMixin.get_objects(self.canvas)
@@ -1524,7 +1524,8 @@ class SAMOS_Main(object):
         CM.CompoundMixin.draw(self.canvas,self.canvas.viewer)
         
         END OF THE COMPOUNDMIXING EXCERCISE
-                
+        #=====================================        
+
         # region = 'fk5;circle(290.96388,14.019167,843.31194")'
         # astropy_region = pyregion.parse(region)
         #astropy_region=ap_region.ginga_canvas_object_to_astropy_region(self.canvas.objects[0])
@@ -1558,7 +1559,7 @@ class SAMOS_Main(object):
             ap_region.add_region(self.canvas,pyregion)
 
         print("yay!")            
-        """
+        
         #Export all Ginga objects to Astropy region
         #1. list of ginga objects
         objects = CM.CompoundMixin.get_objects(self.canvas)
@@ -1607,7 +1608,7 @@ class SAMOS_Main(object):
 
         
         print("check")
-        
+        """
 
     def cursor_cb(self, viewer, button, data_x, data_y):
         

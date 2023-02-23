@@ -83,6 +83,7 @@ class Window(Toplevel):
 #         
 #        # Power on/odd 
 # =============================================================================
+        self.is_on = False
         if self.is_on == False:
             text = "Turn power ON"
             color = "green"
@@ -259,13 +260,16 @@ class Window(Toplevel):
         print('at startup, get echo from server:')
         t = PCM.echo_client() 
         self.Echo_String.set(t)
-        if t[2:13] == "NO RESPONSE":
-            self.is_on = False
-            self.Echo_String.set(t[2:13])
+        if t!= None:
+            print(t[2:13])
+            if t[2:13] == "NO RESPONSE":
+                self.is_on = False
+                self.Echo_String.set(t[2:13])
+            else:
+                self.is_on = True
+                self.Echo_String.set(t)
         else:
-            self.is_on = True
-            self.Echo_String.set(t)
-    
+            print("No echo from the server")
 
     def call_echo_PCM(self):       
         print('echo from server:')

@@ -28,8 +28,8 @@ import pandas as pd
 
 from pathlib import Path
 path = Path(__file__).parent.absolute()
-local_dir = str(path.absolute())
-parent_dir = str(path.parent)   
+local_dir = str(path.absolute()) #  .../SAMOS_DMD_dev
+parent_dir = str(path.parent)  
 sys.path.append(parent_dir)
 
 SF_path = parent_dir+"/SAMOS_system_dev"
@@ -160,7 +160,7 @@ class GUI_DMD(tk.Tk):#tk.Toplevel):  #this is a sublclass of whatver is Toplevel
     def dmd_initialize(self):
         DMD.initialize()
         DMD._open()
-        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        image_map = Image.open(local_dir + "/current_dmd_state.png")
         self.img= ImageTk.PhotoImage(image_map)
         self.canvas.create_image(104,128,image=self.img)
               
@@ -168,7 +168,7 @@ class GUI_DMD(tk.Tk):#tk.Toplevel):  #this is a sublclass of whatver is Toplevel
     def dmd_blackout(self):
         DMD.apply_blackout()
         # global img
-        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        image_map = Image.open(local_dir + "/current_dmd_state.png")
         self.img= ImageTk.PhotoImage(image_map)
         #Add image to the Canvas Items
         self.canvas.create_image(104,128,image=self.img)
@@ -176,7 +176,7 @@ class GUI_DMD(tk.Tk):#tk.Toplevel):  #this is a sublclass of whatver is Toplevel
     def dmd_whiteout(self):
         DMD.apply_whiteout()
         # global img
-        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        image_map = Image.open(local_dir + "/current_dmd_state.png")
         self.img= ImageTk.PhotoImage(image_map)
         #Add image to the Canvas Items
         self.canvas.create_image(104,128,image=self.img)
@@ -184,33 +184,33 @@ class GUI_DMD(tk.Tk):#tk.Toplevel):  #this is a sublclass of whatver is Toplevel
     def dmd_checkerboard(self):
         DMD.apply_checkerboard()
         # global img
-        shutil.copy("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/checkerboard.png","/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        shutil.copy(local_dir + "/checkerboard.png",local_dir + "/current_dmd_state.png")
         time.sleep(1)
-        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        image_map = Image.open(local_dir + "/current_dmd_state.png")
         self.img= ImageTk.PhotoImage(image_map)
         #Add image to the Canvas Items
         self.canvas.create_image(104,128,image=self.img)
 
     def dmd_invert(self):
         DMD.apply_invert()
-        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        image_map = Image.open(local_dir + "/current_dmd_state.png")
         image=image_map.convert("L")
         image_invert = ImageOps.invert(image)
-        image_invert.save("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        image_invert.save(local_dir + "/current_dmd_state.png")
         # global img
-        #img= ImageTk.PhotoImage(Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png"))
+        #img= ImageTk.PhotoImage(Image.open(local_dir + "/current_dmd_state.png"))
         self.img= ImageTk.PhotoImage(image_invert)
         #Add image to the Canvas Items
         self.canvas.create_image(104,128,image=self.img)
              
 #        # global img
-#        img= ImageTk.PhotoImage(Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png"))
+#        img= ImageTk.PhotoImage(Image.open(local_dir + "/current_dmd_state.png"))
 #        #Add image to the Canvas Items
 #        self.canvas.create_image(104,128,image=img)
 
     def dmd_antinvert(self):
         DMD.apply_antinvert()
-        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        image_map = Image.open(local_dir + "/current_dmd_state.png")
         self.img= ImageTk.PhotoImage(image_map)
         #Add image to the Canvas Items
         self.canvas.create_image(104,128,image=self.img)
@@ -265,7 +265,7 @@ class GUI_DMD(tk.Tk):#tk.Toplevel):  #this is a sublclass of whatver is Toplevel
         # Create a photoimage object of the image in the path
         #Load an image in the script
         # global img
-        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        image_map = Image.open(local_dir + "/current_dmd_state.png")
         self.img= ImageTk.PhotoImage(image_map)
 
         print('img =', self.img)
@@ -305,7 +305,7 @@ class GUI_DMD(tk.Tk):#tk.Toplevel):  #this is a sublclass of whatver is Toplevel
         # Create a photoimage object of the image in the path
         #Load the image
         # global img
-        image_map = Image.open("/Users/samos_dev/GitHub/SAMOS_GUI_Python/SAMOS_DMD_dev/current_dmd_state.png")
+        image_map = Image.open(local_dir + "/current_dmd_state.png")
         self.img= ImageTk.PhotoImage(image_map)
 
         #Add image to the Canvas Items

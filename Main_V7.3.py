@@ -1508,7 +1508,7 @@ class SAMOS_Main(object):
         self.canvas.objects   #check that the points are gone
            
         #we can remove both points and boxes
-        points = CM.CompoundMixin.get_objects_by_kinds(self.canvas,['point','box'])
+        points = CM.CompoundMixin.get_objects_by_kinds(self.canvas,['point','box','circle'])
         list_points=list(points)
         CM.CompoundMixin.delete_objects(self.canvas,list_points)
         self.canvas.objects   #check that the points are gone
